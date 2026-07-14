@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>卡牌召喚戰役 Card Summoner</title>
+  <title>教育部辭典召喚戰役</title>
   <style>
-    /* 全域極簡現代暗色調風格 */
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -27,7 +26,6 @@
       color: #f7fafc;
     }
 
-    /* 金幣顯示區域 */
     .currency-bar {
       font-size: 1.1rem;
       font-weight: bold;
@@ -35,17 +33,16 @@
       margin-bottom: 20px;
       background-color: rgba(236, 201, 75, 0.1);
       padding: 6px 20px;
-      border-radius: 40px; /* 膠囊設計 */
+      border-radius: 40px; /* Capsule */
       border: 1px solid rgba(236, 201, 75, 0.3);
     }
 
-    /* 導覽列：膠囊形狀按鈕組 */
     .nav-bar {
       display: flex;
       gap: 15px;
       background-color: #1a202c;
       padding: 8px;
-      border-radius: 40px; /* 經典 Capsule 圓角 */
+      border-radius: 40px; /* Capsule */
       margin-bottom: 30px;
       border: 1px solid #2d3748;
     }
@@ -58,7 +55,7 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      border-radius: 40px; /* 膠囊形狀 */
+      border-radius: 40px; /* Capsule */
       transition: all 0.3s ease;
     }
 
@@ -68,7 +65,6 @@
       box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
     }
 
-    /* 區塊顯示控制 */
     .screen {
       display: none;
       width: 100%;
@@ -85,7 +81,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* 1. 抽卡商店區 - 多卡包並列 */
     .shop-container {
       display: flex;
       flex-direction: column;
@@ -95,7 +90,6 @@
 
     .packs-grid {
       display: flex;
-      flex-wrap: wrap;
       justify-content: center;
       gap: 25px;
       width: 100%;
@@ -106,15 +100,10 @@
       border: 2px solid #4a5568;
       border-radius: 24px;
       padding: 30px;
-      width: 280px;
+      width: 320px;
       box-sizing: border-box;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      transition: transform 0.3s;
-    }
-
-    .gacha-pack:hover {
-      transform: translateY(-5px);
     }
 
     .pack-price {
@@ -124,7 +113,6 @@
       margin: 15px 0;
     }
 
-    /* 現代圓角按鈕 */
     .btn-action {
       background: linear-gradient(90deg, #3182ce, #319795);
       border: none;
@@ -132,7 +120,7 @@
       padding: 12px 35px;
       font-size: 1rem;
       font-weight: bold;
-      border-radius: 40px; /* 膠囊形狀 */
+      border-radius: 40px; /* Capsule */
       cursor: pointer;
       box-shadow: 0 5px 15px rgba(49, 130, 206, 0.4);
       transition: transform 0.2s, box-shadow 0.2s;
@@ -144,19 +132,19 @@
       box-shadow: 0 8px 20px rgba(49, 130, 206, 0.6);
     }
 
-    /* 卡牌容器與動態卡片設計 */
     .card-display-area {
       display: flex;
       justify-content: center;
       gap: 20px;
       margin-top: 20px;
-      min-height: 220px;
+      min-height: 260px;
       width: 100%;
     }
 
+    /* 質感卡牌 */
     .game-card {
-      width: 140px;
-      height: 210px;
+      width: 200px;
+      height: 300px;
       background: #2d3748;
       border-radius: 16px;
       border: 2px solid #4a5568;
@@ -166,7 +154,6 @@
       padding: 15px;
       box-sizing: border-box;
       position: relative;
-      overflow: hidden;
       box-shadow: 0 8px 16px rgba(0,0,0,0.3);
       transition: transform 0.3s;
     }
@@ -175,46 +162,61 @@
       transform: translateY(-5px);
     }
 
-    /* 稀有度顏色標記 */
-    .game-card.SSR { border-color: #ecc94b; background: linear-gradient(145deg, #2d3748, #744210); }
-    .game-card.SR { border-color: #9f7aea; background: linear-gradient(145deg, #2d3748, #44337a); }
-    .game-card.R { border-color: #4299e1; background: linear-gradient(145deg, #2d3748, #2b6cb0); }
-    .game-card.N { border-color: #a0aec0; background: #2d3748; }
+    /* 詞性顏色標記 */
+    .game-card.動詞 { border-color: #f56565; background: linear-gradient(145deg, #2d3748, #742a2a); } /* 動詞-火紅 */
+    .game-card.名詞 { border-color: #4299e1; background: linear-gradient(145deg, #2d3748, #2b6cb0); } /* 名詞-水藍 */
+    .game-card.形容詞, .game-card.副詞 { border-color: #9f7aea; background: linear-gradient(145deg, #2d3748, #44337a); } /* 形/副-神秘紫 */
+    .game-card.其他 { border-color: #a0aec0; background: #2d3748; }
 
-    .card-rarity {
-      font-size: 0.8rem;
+    .card-element {
+      font-size: 0.75rem;
       font-weight: 900;
-      text-transform: uppercase;
       align-self: flex-start;
       padding: 2px 8px;
       border-radius: 10px;
       background-color: rgba(0,0,0,0.4);
+      color: #fff;
     }
-
-    .SSR .card-rarity { color: #ecc94b; }
-    .SR .card-rarity { color: #d6bcfa; }
-    .R .card-rarity { color: #90cdf4; }
-    .N .card-rarity { color: #e2e8f0; }
 
     .card-name {
       font-weight: bold;
-      font-size: 1.1rem;
-      margin: 10px 0;
+      font-size: 1.3rem;
+      margin: 5px 0;
       text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .card-pinyin {
+      font-size: 0.8rem;
+      color: #cbd5e0;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .card-desc {
+      font-size: 0.75rem;
+      color: #a0aec0;
+      height: 90px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      padding: 6px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      line-height: 1.4;
     }
 
     .card-stats {
       font-size: 0.8rem;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0,0,0,0.4);
       padding: 6px;
       border-radius: 8px;
       text-align: left;
+      font-family: monospace;
     }
 
-    /* 2. 背包與編隊區 */
     .inventory-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
       margin-top: 20px;
     }
@@ -230,7 +232,6 @@
       border: 1px solid #2d3748;
     }
 
-    /* 3. 戰鬥競技場 */
     .battle-field {
       display: flex;
       justify-content: space-around;
@@ -265,33 +266,49 @@
     .log-entry { margin-bottom: 6px; }
     .log-win { color: #48bb78; font-weight: bold; }
     .log-lose { color: #f56565; font-weight: bold; }
+
+    /* 載入中動畫 */
+    .loading-text {
+      color: #3182ce;
+      font-weight: bold;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 0.5; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
 
-  <h1>🎴 卡牌召喚戰役</h1>
+  <h1>🎴 教育部辭典召喚戰役</h1>
   
-  <!-- 頂部金幣顯示 -->
   <div class="currency-bar">
-    💰 擁有金幣：<span id="player-gold">1000</span> G
+    💰 擁有學習點數：<span id="player-gold">1000</span> PTS
   </div>
 
-  <!-- 膠囊導覽列 -->
   <div class="nav-bar">
-    <button class="nav-btn active" onclick="switchScreen('shop-screen')">神秘商店</button>
-    <button class="nav-btn" onclick="switchScreen('bag-screen')">卡牌背包</button>
-    <button class="nav-btn" onclick="switchScreen('battle-screen')">戰鬥競技場</button>
+    <button class="nav-btn active" onclick="switchScreen('shop-screen')">字詞召喚處</button>
+    <button class="nav-btn" onclick="switchScreen('bag-screen')">辭典背包</button>
+    <button class="nav-btn" onclick="switchScreen('battle-screen')">論戰競技場</button>
   </div>
 
   <!-- 1. 商店畫面 -->
   <div id="shop-screen" class="screen active">
     <div class="shop-container">
-      <div class="packs-grid" id="packs-container">
-        <!-- 卡包動態產生 -->
+      <div class="packs-grid">
+        <div class="gacha-pack">
+          <h3 style="margin-top:0; color:#f7fafc;">教育部國語大字典卡包</h3>
+          <p style="color: #a0aec0; font-size: 0.85rem; margin-bottom: 10px;">
+            聯網即時查閱！隨機召喚一個真實中文詞彙，動態產生對決卡牌！
+          </p>
+          <div class="pack-price">💰 150 PTS</div>
+          <button class="btn-action" id="btn-draw" onclick="buyDictionaryPack()">進行字詞召喚</button>
+        </div>
       </div>
-      <h3 style="margin-top: 20px; margin-bottom: 5px;">🎉 本次抽卡結果</h3>
+      <h3 style="margin-top: 20px; margin-bottom: 5px;">🎉 召喚出的詞彙卡牌</h3>
       <div class="card-display-area" id="draw-result">
-        <p style="color: #718096; align-self: center;">尚未抽卡，請購買上方卡包</p>
+        <p style="color: #718096; align-self: center;">尚未召喚，請使用上方卡包</p>
       </div>
     </div>
   </div>
@@ -300,189 +317,180 @@
   <div id="bag-screen" class="screen">
     <div class="deck-info">
       <div>
-        <strong>目前出戰隊友：</strong> 
+        <strong>目前出戰詞彙：</strong> 
         <span id="current-fighter-name" style="color: #ecc94b;">無 (請選擇下方卡牌)</span>
       </div>
     </div>
-    <div class="inventory-grid" id="inventory-list">
-      <!-- 背包卡片列表 -->
-    </div>
+    <div class="inventory-grid" id="inventory-list"></div>
   </div>
 
   <!-- 3. 戰鬥畫面 -->
   <div id="battle-screen" class="screen">
     <div style="text-align: center; margin-bottom: 20px;">
-      <button class="btn-action" style="max-width: 200px;" onclick="startCombat()">發動對決！</button>
+      <button class="btn-action" style="max-width: 200px;" onclick="startCombat()">展開舌戰對決！</button>
     </div>
     <div class="battle-field">
-      <div id="player-fighter-spot">
-        <!-- 玩家戰卡 -->
-      </div>
+      <div id="player-fighter-spot"></div>
       <div class="versus">VS</div>
-      <div id="enemy-fighter-spot">
-        <!-- 敵方戰卡 -->
-      </div>
+      <div id="enemy-fighter-spot"></div>
     </div>
     <div class="battle-log-box" id="battle-log">
-      <div class="log-entry" style="color: #a0aec0;">等待對戰開始...請先在「卡牌背包」中選好出戰卡。</div>
+      <div class="log-entry" style="color: #a0aec0;">等待對戰開始...請先在「辭典背包」中選好出戰卡。</div>
     </div>
   </div>
 
   <script>
-    // ==================== 核心卡包資料庫 (JSON) ====================
-    
-    // 1. 卡片資料庫（唯讀底牌）
-    const CARDS_DATABASE = {
-      "card_001": { id: "card_001", name: "烈焰巨龍", rarity: "SSR", hp: 160, atk: 48, def: 15 },
-      "card_002": { id: "card_002", name: "深海利維坦", rarity: "SSR", hp: 180, atk: 38, def: 20 },
-      "card_003": { id: "card_003", name: "冰霜領主", rarity: "SR", hp: 110, atk: 35, def: 10 },
-      "card_004": { id: "card_004", name: "雷霆迅猛獸", rarity: "SR", hp: 95, atk: 38, def: 8 },
-      "card_005": { id: "card_005", name: "森林巨石兵", rarity: "R", hp: 120, atk: 22, def: 18 },
-      "card_006": { id: "card_006", name: "風精靈祭司", rarity: "R", hp: 85, atk: 30, def: 5 },
-      "card_007": { id: "card_007", name: "哥布林戰士", rarity: "N", hp: 70, atk: 18, def: 5 },
-      "card_008": { id: "card_008", name: "史萊姆", rarity: "N", hp: 50, atk: 12, def: 2 }
-    };
+    // ==================== 聯網成語字詞庫 (作為隨機挑選的庫) ====================
+    const WORD_POOL = [
+      "金城湯池", "橫掃千軍", "風馳電掣", "亡羊補牢", "勢如破竹", 
+      "守株待兔", "釜底抽薪", "一鳴驚人", "風聲鶴唳", "魑魅魍魎",
+      "精益求精", "破釜沉舟", "海市蜃樓", "虛懷若谷", "畫蛇添足",
+      "力拔山河", "怒髮衝冠", "一塵不染", "落葉歸根", "飲水思源",
+      "雷霆萬鈞", "千軍萬馬", "空穴來風", "死灰復燃", "談笑風生",
+      "開門見山", "順手牽羊", "對牛彈琴", "草木皆兵", "背水一戰"
+    ];
 
-    // 2. 卡包設定庫（定義機率與卡池）
-    const PACKS_DATABASE = {
-      "rookie_pack": {
-        id: "rookie_pack",
-        name: "新手冒險卡包",
-        cost: 100,
-        description: "最基礎的探險補給，有機率開出高階 R、SR 卡！",
-        cardPool: ["card_005", "card_006", "card_007", "card_008"], // 只能開出這些
-        rates: {
-          "SR": 10,   // 10%
-          "R": 40,    // 40%
-          "N": 50     // 50%
-        }
-      },
-      "legend_pack": {
-        id: "legend_pack",
-        name: "傳奇領主卡包",
-        cost: 350,
-        description: "高階卡包，保證不含 N 卡！高機率開出傳說 SSR！",
-        cardPool: ["card_001", "card_002", "card_003", "card_004", "card_005"],
-        rates: {
-          "SSR": 10,  // 10%
-          "SR": 30,   // 30%
-          "R": 60     // 60%
-        }
-      }
-    };
-
-    // ==================== 玩家狀態資料 ====================
     let playerGold = 1000;
     let playerInventory = [];
     let activeCardIndex = null;
 
-    // 初始化網頁時載入卡包
     window.onload = function() {
-      renderPacks();
       updateGoldUI();
     };
 
-    // 更新金幣顯示
     function updateGoldUI() {
       document.getElementById('player-gold').textContent = playerGold;
     }
 
-    // --- 渲染卡包商店 ---
-    function renderPacks() {
-      const container = document.getElementById('packs-container');
-      container.innerHTML = '';
+    // ==================== 聯網萌典 API 核心邏輯 ====================
+    async function fetchWordData(word) {
+      try {
+        // 使用 Moedict 開源 API (教育部國語辭典資料)
+        const response = await fetch(`https://www.moedict.tw/uni/${encodeURIComponent(word)}`);
+        if (!response.ok) throw new Error("API 請求失敗");
+        const data = await response.json();
 
-      for (let key in PACKS_DATABASE) {
-        const pack = PACKS_DATABASE[key];
-        const packEl = document.createElement('div');
-        packEl.className = 'gacha-pack';
-        packEl.innerHTML = `
-          <h3 style="margin-top:0; color:#f7fafc;">${pack.name}</h3>
-          <p style="color: #a0aec0; font-size: 0.85rem; height: 40px; margin-bottom: 10px;">${pack.description}</p>
-          <div class="pack-price">💰 ${pack.cost} G</div>
-          <button class="btn-action" onclick="buyPack('${pack.id}')">購買並開啟</button>
-        `;
-        container.appendChild(packEl);
+        // 解析萌典格式
+        const pinyin = data.heteronyms[0].pinyin || "無拼音";
+        const bopomofo = data.heteronyms[0].bopomofo || "無注音";
+        
+        // 抓取第一個定義
+        const defObj = data.heteronyms[0].definitions[0];
+        const rawDef = defObj.def || "暫無釋義";
+        // 去除釋義中的超連結括號
+        const definition = rawDef.replace(/[\[\]~]/g, ''); 
+        
+        // 抓取詞性 (名、動、形、副等)
+        let rawType = defObj.type || "其他";
+        let type = "其他";
+        if (rawType.includes("動")) type = "動詞";
+        else if (rawType.includes("名")) type = "名詞";
+        else if (rawType.includes("形")) type = "形容詞";
+        else if (rawType.includes("副")) type = "副詞";
+
+        // 用詞彙本身特徵計算戰鬥數值 (Procedural Stats)
+        const wordLength = word.length;
+        
+        let hp = 100 + (wordLength * 15);
+        let atk = 25 + (wordLength * 5);
+        let def = 5 + (wordLength * 3);
+
+        // 詞性特化加成
+        if (type === "動詞") {
+          atk += 20; // 攻擊加成
+          hp -= 20;
+        } else if (type === "名詞") {
+          def += 15; // 防禦加成
+          hp += 30;
+        } else if (type === "形容詞" || type === "副詞") {
+          atk += 10;
+          def += 8;
+        }
+
+        return {
+          id: Date.now() + Math.random(),
+          name: word,
+          pinyin: `${bopomofo} (${pinyin})`,
+          rarity: wordLength >= 4 ? "SSR" : "SR", // 四字成語判定為 SSR
+          type: type,
+          hp: hp,
+          atk: atk,
+          def: def,
+          description: definition
+        };
+      } catch (error) {
+        console.error("無法取得資料:", error);
+        // 如果網路斷線或 API 出錯，使用本地預設備份
+        return {
+          id: Date.now(),
+          name: word,
+          pinyin: "ㄓㄨˋ ㄧㄣ (pinyin)",
+          rarity: "SR",
+          type: "其他",
+          hp: 120,
+          atk: 30,
+          def: 10,
+          description: "這是一個充滿魔力的神祕詞彙。 (因網路原因使用備用資料)"
+        };
       }
     }
 
-    // --- 購買與抽卡邏輯 ---
-    function buyPack(packId) {
-      const pack = PACKS_DATABASE[packId];
-      
-      // 1. 檢查金幣是否足夠
-      if (playerGold < pack.cost) {
-        alert("❌ 金幣不足！請去「戰鬥競技場」賺取金幣！");
+    // --- 購買與召喚 ---
+    async function buyDictionaryPack() {
+      if (playerGold < 150) {
+        alert("❌ 學習點數不足！請去「論戰競技場」贏取點數！");
         return;
       }
 
-      // 2. 扣除金幣
-      playerGold -= pack.cost;
+      const drawButton = document.getElementById('btn-draw');
+      const resultArea = document.getElementById('draw-result');
+      
+      // 進入 Loading 狀態
+      drawButton.disabled = true;
+      drawButton.innerText = "召喚中...";
+      resultArea.innerHTML = `<p class="loading-text">正在翻閱教育部辭典中...</p>`;
+
+      playerGold -= 150;
       updateGoldUI();
 
-      // 3. 開始計算抽卡
-      const resultArea = document.getElementById('draw-result');
-      resultArea.innerHTML = ''; // 清空舊顯示
+      // 隨機選一個詞並聯網查詢
+      const randomWord = WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
+      const newCard = await fetchWordData(randomWord);
 
-      // 決定抽中哪種稀有度
-      let roll = Math.random() * 100;
-      let selectedRarity = "N"; // 預設安全值
-      let accumulated = 0;
-
-      for (let rarity in pack.rates) {
-        accumulated += pack.rates[rarity];
-        if (roll <= accumulated) {
-          selectedRarity = rarity;
-          break;
-        }
-      }
-
-      // 從該卡包的專屬卡池 (cardPool) 中，篩選出符合該稀有度的卡片
-      const eligibleCards = pack.cardPool
-        .map(id => CARDS_DATABASE[id])
-        .filter(card => card && card.rarity === selectedRarity);
-
-      // 如果篩選出來剛好是空的（安全防護），就從卡池隨機挑一張
-      let finalCardData;
-      if (eligibleCards.length > 0) {
-        finalCardData = eligibleCards[Math.floor(Math.random() * eligibleCards.length)];
-      } else {
-        // 退回機制：隨機選取該卡包中的任何一張
-        const fallbackId = pack.cardPool[Math.floor(Math.random() * pack.cardPool.length)];
-        finalCardData = CARDS_DATABASE[fallbackId];
-      }
-
-      // 將抽到的卡加入玩家背包
-      const newCardInstance = { ...finalCardData, id: Date.now() };
-      playerInventory.push(newCardInstance);
-
-      // 如果是第一張卡，自動設定為出戰卡
+      // 加入背包
+      playerInventory.push(newCard);
       if (activeCardIndex === null) activeCardIndex = 0;
 
-      // 顯示抽卡結果卡牌
-      const cardEl = createCardElement(newCardInstance);
-      resultArea.appendChild(cardEl);
+      // 渲染結果
+      resultArea.innerHTML = '';
+      resultArea.appendChild(createCardElement(newCard));
+
+      // 恢復按鈕
+      drawButton.disabled = false;
+      drawButton.innerText = "進行字詞召喚";
     }
 
-    // --- 生成卡牌 HTML 結構 ---
+    // --- 生成卡片 DOM ---
     function createCardElement(card, isSelectable = false, index = null) {
       const cardDiv = document.createElement('div');
-      cardDiv.className = `game-card ${card.rarity}`;
+      cardDiv.className = `game-card ${card.type}`;
       
       if (isSelectable) {
         cardDiv.style.cursor = 'pointer';
         cardDiv.onclick = () => selectFighter(index);
         if (index === activeCardIndex) {
           cardDiv.style.boxShadow = '0 0 15px #ecc94b';
-          cardDiv.style.transform = 'scale(1.05)';
+          cardDiv.style.transform = 'scale(1.03)';
         }
       }
 
       cardDiv.innerHTML = `
-        <div class="card-rarity">${card.rarity}</div>
+        <div class="card-element">${card.type}</div>
         <div class="card-name">${card.name}</div>
+        <div class="card-pinyin">${card.pinyin}</div>
+        <div class="card-desc">${card.description}</div>
         <div class="card-stats">
-          HP: ${card.hp}<br>
+          HP : ${card.hp}<br>
           ATK: ${card.atk}<br>
           DEF: ${card.def}
         </div>
@@ -508,7 +516,7 @@
       list.innerHTML = '';
 
       if (playerInventory.length === 0) {
-        list.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #a0aec0;">目前背包空空的，先去商店抽卡包吧！</p>`;
+        list.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #a0aec0;">目前背包空空的，快去召喚字詞吧！</p>`;
         return;
       }
 
@@ -517,10 +525,9 @@
         list.appendChild(cardEl);
       });
 
-      // 更新頂部出戰卡資訊
       const infoSpan = document.getElementById('current-fighter-name');
       if (activeCardIndex !== null && playerInventory[activeCardIndex]) {
-        infoSpan.textContent = `${playerInventory[activeCardIndex].name} (${playerInventory[activeCardIndex].rarity})`;
+        infoSpan.textContent = `${playerInventory[activeCardIndex].name} (${playerInventory[activeCardIndex].type})`;
       } else {
         infoSpan.textContent = "無";
       }
@@ -531,8 +538,8 @@
       renderInventory();
     }
 
-    // --- 準備戰鬥場地 ---
-    function prepareBattlefield() {
+    // --- 戰鬥準備 ---
+    async function prepareBattlefield() {
       const pSpot = document.getElementById('player-fighter-spot');
       const eSpot = document.getElementById('enemy-fighter-spot');
       pSpot.innerHTML = '';
@@ -547,68 +554,84 @@
       const pCard = playerInventory[activeCardIndex];
       pSpot.appendChild(createCardElement(pCard));
 
-      // 隨機選一個對手
-      const allKeys = Object.keys(CARDS_DATABASE);
-      const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-      window.currentEnemy = { ...CARDS_DATABASE[randomKey] };
+      // 隨機選一個對手並「聯網生成」
+      eSpot.innerHTML = `<span class="loading-text">召喚論戰對手...</span>`;
+      const randomWord = WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
+      window.currentEnemy = await fetchWordData(randomWord);
       
+      eSpot.innerHTML = '';
       eSpot.appendChild(createCardElement(window.currentEnemy));
     }
 
-    // --- 戰鬥與金幣結算 ---
+    // --- 舌戰對決系統 (帶有屬性克制) ---
     function startCombat() {
       const logBox = document.getElementById('battle-log');
       logBox.innerHTML = ''; 
 
       if (activeCardIndex === null || !playerInventory[activeCardIndex]) {
-        logBox.innerHTML = `<div class="log-entry" style="color: #f56565;">戰鬥失敗：請先去背包選擇出戰卡牌！</div>`;
+        logBox.innerHTML = `<div class="log-entry" style="color: #f56565;">戰鬥失敗：請先去背包選擇出戰詞彙！</div>`;
         return;
       }
 
-      let playerFighter = { ...playerInventory[activeCardIndex] };
-      let enemyFighter = { ...window.currentEnemy };
+      let p = { ...playerInventory[activeCardIndex] };
+      let e = { ...window.currentEnemy };
 
-      addLog(`⚔️ 戰鬥開始！${playerFighter.name} VS ${enemyFighter.name}`);
+      addLog(`⚔️ 論戰開始！「${p.name}」 執意挑戰 「${e.name}」！`);
+
+      // 屬性相剋判定：動詞剋名詞，名詞剋形容詞，形容詞剋動詞
+      let pDamageMult = 1.0;
+      let eDamageMult = 1.0;
+
+      if (p.type === "動詞" && e.type === "名詞") pDamageMult = 1.5;
+      else if (p.type === "名詞" && e.type === "形容詞") pDamageMult = 1.5;
+      else if ((p.type === "形容詞" || p.type === "副詞") && e.type === "動詞") pDamageMult = 1.5;
+
+      if (e.type === "動詞" && p.type === "名詞") eDamageMult = 1.5;
+      else if (e.type === "名詞" && p.type === "形容詞") eDamageMult = 1.5;
+      else if ((e.type === "形容詞" || e.type === "副詞") && p.type === "動詞") eDamageMult = 1.5;
+
+      if (pDamageMult > 1.0) addLog(`💡 詞性優勢！「${p.name}」對「${e.name}」產生言詞壓制！(傷害 1.5 倍)`);
+      if (eDamageMult > 1.0) addLog(`⚠️ 局勢不妙！「${e.name}」的詞性反過來壓制了你！(受到傷害 1.5 倍)`);
 
       let round = 1;
-      while (playerFighter.hp > 0 && enemyFighter.hp > 0 && round <= 20) {
-        addLog(`[回合 ${round}]`);
+      while (p.hp > 0 && e.hp > 0 && round <= 15) {
+        addLog(`[論點交鋒 第 ${round} 回合]`);
         
         // 玩家攻擊
-        let dmgToEnemy = Math.max(1, playerFighter.atk - enemyFighter.def);
-        enemyFighter.hp -= dmgToEnemy;
-        addLog(`🗡️ ${playerFighter.name} 發動猛攻，對 ${enemyFighter.name} 造成 ${dmgToEnemy} 點傷害。 (對方 HP: ${Math.max(0, enemyFighter.hp)})`);
+        let dmgToEnemy = Math.max(1, Math.round((p.atk * pDamageMult) - e.def));
+        e.hp -= dmgToEnemy;
+        addLog(`🗣️ 「${p.name}」引經據典，對「${e.name}」造成 ${dmgToEnemy} 點邏輯打擊。 (對方辯解值剩下: ${Math.max(0, e.hp)})`);
         
-        if (enemyFighter.hp <= 0) break;
+        if (e.hp <= 0) break;
 
         // 敵人反擊
-        let dmgToPlayer = Math.max(1, enemyFighter.atk - playerFighter.def);
-        playerFighter.hp -= dmgToPlayer;
-        addLog(`💥 ${enemyFighter.name} 展開反擊，對 ${playerFighter.name} 造成 ${dmgToPlayer} 點傷害。 (我方 HP: ${Math.max(0, playerFighter.hp)})`);
+        let dmgToPlayer = Math.max(1, Math.round((e.atk * eDamageMult) - p.def));
+        p.hp -= dmgToPlayer;
+        addLog(`💥 「${e.name}」針鋒相對，反駁了 「${p.name}」並造成 ${dmgToPlayer} 點邏輯破綻。 (我方辯解值剩下: ${Math.max(0, p.hp)})`);
 
         round++;
       }
 
-      // 結算金幣獎勵
-      if (playerFighter.hp > 0 && enemyFighter.hp <= 0) {
-        const prize = 200;
+      // 結算點數
+      if (p.hp > 0 && e.hp <= 0) {
+        const prize = 250;
         playerGold += prize;
-        addLog(`🏆 恭喜！${playerFighter.name} 贏得了這場史詩對決！`, 'log-win');
-        addLog(`💰 戰利品獎勵：獲得金幣 +${prize} G！`, 'log-win');
-      } else if (playerFighter.hp <= 0 && enemyFighter.hp > 0) {
+        addLog(`🏆 獲勝！「${p.name}」以無懈可擊的邏輯贏得了論戰！`, 'log-win');
+        addLog(`💰 榮譽獎勵：獲得學習點數 +${prize} PTS！`, 'log-win');
+      } else if (p.hp <= 0 && e.hp > 0) {
         const prize = 50;
         playerGold += prize;
-        addLog(`💀 殘念！${playerFighter.name} 倒下了。`, 'log-lose');
-        addLog(`🪙 慰問金：獲得金幣 +${prize} G！`, 'log-lose');
+        addLog(`💀 敗北！「${p.name}」言詞理屈，被駁倒在競技場上。`, 'log-lose');
+        addLog(`🪙 勉勵點數：獲得學習點數 +${prize} PTS！`, 'log-lose');
       } else {
-        const prize = 80;
+        const prize = 100;
         playerGold += prize;
-        addLog(`⏳ 雙方激戰 20 回合，最終握手言和！`);
-        addLog(`🪙 平手退場：獲得金幣 +${prize} G！`);
+        addLog(`⏳ 雙方滔滔不絕，難分軒輊，最終流局！`);
+        addLog(`🪙 握手言和：獲得學習點數 +${prize} PTS！`);
       }
 
       updateGoldUI();
-      prepareBattlefield(); // 戰鬥完隨機重刷下一隻對手
+      prepareBattlefield(); 
     }
 
     function addLog(text, className = '') {
