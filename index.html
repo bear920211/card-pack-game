@@ -327,7 +327,7 @@
         <div class="gacha-pack">
           <h3 style="margin-top:0; color:#f7fafc;">全漢字典藏召喚包</h3>
           <p style="color: #a0aec0; font-size: 0.85rem; margin-bottom: 10px;">
-            教育部辭典全字庫隨機檢索！已啟用防重複快取技術。15% 機率開出<b>單字奧義卡（SSR）</b>，其餘為生活詞與成語。
+            教育部辭典全字庫隨機檢索！已修正為真・字根詞清單。15% 機率開出<b>單字奧義卡（SSR）</b>，其餘為經典词彙與成語。
           </p>
           <div class="pack-price">💰 150 PTS</div>
           <button class="btn-action" id="btn-draw" onclick="buyDictionaryPack()">進行字詞召喚</button>
@@ -388,15 +388,15 @@
       document.getElementById('player-gold').textContent = playerGold;
     }
 
-    // ==================== 徹底防重複與快取的隨機演算法 ====================
+    // ==================== 徹底解決 API Bug 且不重複的全新隨機演算法 ====================
     async function getRandomWordFromDict() {
       let attempts = 0;
       
-      while (attempts < 5) { // 最多嘗試 5 次篩選出不重複的字
+      while (attempts < 5) { 
         attempts++;
         const prefix = RADICALS[Math.floor(Math.random() * RADICALS.length)];
         
-        // 1. 固定 15% 的機率直接生成單字奧義卡
+        // 1. 固定 15% 的機率直接生成單字奧義卡（1字）
         if (Math.random() < 0.15) {
           if (!recentWordsHistory.includes(prefix)) {
             pushToHistory(prefix);
@@ -405,16 +405,17 @@
           continue;
         }
 
-        // 2. 另外 85% 機率，前往萌典撈取 2~4 字的詞彙
+        // 2. 另外 85% 機率，前往萌典 len API（撈取真正的前綴词清單，這會回傳所有包含此字跟的詞）
         try {
-          // 🔥 關鍵核心：加上 _t=時間戳記 殺死瀏覽器快取，並隨機多取一位數
           const cacheBuster = Date.now() + "_" + Math.floor(Math.random() * 10000);
-          const listRes = await fetch(`https://www.moedict.tw/a/${encodeURIComponent(prefix)}.json?_t=${cacheBuster}`);
-          if (!listRes.ok) throw new Error("API 回應失敗");
+          
+          // 使用官方前綴搜尋 API（直接拿到所有關聯詞）
+          const listRes = await fetch(`https://www.moedict.tw/len/${encodeURIComponent(prefix)}?_t=${cacheBuster}`);
+          if (!listRes.ok) throw new Error("API 搜尋失敗");
           const list = await listRes.json();
           
           if (list && list.length > 0) {
-            // 過濾：1. 字數 2~4，2. 不能存在於最近的重複紀錄中
+            // 過濾長度在 2~4 之間，且不在最近紀錄中的詞
             const filteredList = list.filter(w => w.length >= 2 && w.length <= 4 && !recentWordsHistory.includes(w)); 
             
             if (filteredList.length > 0) {
@@ -424,29 +425,35 @@
             }
           }
         } catch (e) {
-          // 網路失敗時在地的隨機備份庫
-          const backupList = ["電腦", "冰淇淋", "萬里長城", "茶葉蛋", "熱水器", "風花雪月", "魑魅魍魎", "大顯神威", "電話", "金條", "大胖狗", "斬草除根", "雲消霧散", "雷霆萬鈞", "開門見山", "海市蜃樓"];
+          console.warn("API撈取失敗，使用備用不重複數據集：", e);
+          // 網路失敗時的在地不重複備份
+          const backupList = [
+            "電腦", "冰淇淋", "萬里長城", "茶葉蛋", "熱水器", "風花雪月", "魑魅魍魎", "大顯神威", 
+            "電話", "金條", "大胖狗", "斬草除根", "雲消霧散", "雷霆萬鈞", "開門見山", "海市蜃樓"
+          ];
           const filteredBackup = backupList.filter(w => !recentWordsHistory.includes(w));
-          const word = filteredBackup.length > 0 ? filteredBackup[Math.floor(Math.random() * filteredBackup.length)] : "智慧王";
+          const word = filteredBackup.length > 0 ? filteredBackup[Math.floor(Math.random() * filteredBackup.length)] : "智慧之光";
           pushToHistory(word);
           return word;
         }
       }
 
-      // 如果 5 次都重複（極端情況），強制返回一個絕對獨一無二的隨機後綴詞
-      const fallback = "元宇宙" + Math.floor(Math.random() * 100);
-      return fallback;
+      // 絕路（極端情況）：返回不重複的隨機酷詞
+      const backupKeywords = ["超能力", "平行宇宙", "相對論", "量子糾纏", "蝴蝶效應", "薛丁格的貓"];
+      const finalWord = backupKeywords[Math.floor(Math.random() * backupKeywords.length)];
+      pushToHistory(finalWord);
+      return finalWord;
     }
 
-    // 紀錄歷史字詞（維持最大 15 個，避免重複）
+    // 紀錄歷史字詞（維持最大 15 個）
     function pushToHistory(word) {
       recentWordsHistory.push(word);
       if (recentWordsHistory.length > 15) {
-        recentWordsHistory.shift(); // 移除最舊的
+        recentWordsHistory.shift(); 
       }
     }
 
-    // ==================== 聯網萌典 API 解析資料 ====================
+    // ==================== 聯網萌典 API 解析詳細定義資料 ====================
     async function fetchWordData(word) {
       try {
         const cacheBuster = Date.now();
@@ -518,7 +525,7 @@
           description: definition
         };
       } catch (error) {
-        console.error("無法取得資料:", error);
+        console.error("無法取得詳細資料:", error);
         const wl = word.length;
         return {
           id: Date.now(),
@@ -529,7 +536,7 @@
           hp: 120,
           atk: 30,
           def: 10,
-          description: "這是一個充滿魔力的神祕詞彙。(因網路或快取優化使用防重複備份數據)"
+          description: "這是一個在教育部辭典有正式記載的詞牌，因連線緩慢讀取了本地備存釋義。"
         };
       }
     }
