@@ -321,14 +321,13 @@
     <button class="nav-btn" onclick="switchScreen('battle-screen')">論戰競技場</button>
   </div>
 
-  <!-- 1. 商店畫面 -->
   <div id="shop-screen" class="screen active">
     <div class="shop-container">
       <div class="packs-grid">
         <div class="gacha-pack">
           <h3 style="margin-top:0; color:#f7fafc;">全漢字典藏召喚包</h3>
           <p style="color: #a0aec0; font-size: 0.85rem; margin-bottom: 10px;">
-            教育部辭典全字庫隨機檢索！15% 機率開出罕見的<b>單字奧義卡（SSR）</b>，其餘為生活詞彙與經典成語。
+            教育部辭典全字庫隨機檢索！已啟用防重複快取技術。15% 機率開出<b>單字奧義卡（SSR）</b>，其餘為生活詞與成語。
           </p>
           <div class="pack-price">💰 150 PTS</div>
           <button class="btn-action" id="btn-draw" onclick="buyDictionaryPack()">進行字詞召喚</button>
@@ -341,7 +340,6 @@
     </div>
   </div>
 
-  <!-- 2. 背包畫面 -->
   <div id="bag-screen" class="screen">
     <div class="deck-info">
       <div>
@@ -352,7 +350,6 @@
     <div class="inventory-grid" id="inventory-list"></div>
   </div>
 
-  <!-- 3. 戰鬥畫面 -->
   <div id="battle-screen" class="screen">
     <div style="text-align: center; margin-bottom: 20px;">
       <button class="btn-action" style="max-width: 200px;" onclick="startCombat()">展開舌戰對決！</button>
@@ -379,6 +376,9 @@
     let playerGold = 1000;
     let playerInventory = [];
     let activeCardIndex = null;
+    
+    // 🔥 防重複記錄庫：記住最近出現過的 15 個字詞，絕不重複抽出
+    let recentWordsHistory = [];
 
     window.onload = function() {
       updateGoldUI();
@@ -388,44 +388,69 @@
       document.getElementById('player-gold').textContent = playerGold;
     }
 
-    // ==================== 修正版：字數平衡分配分配演算法 ====================
+    // ==================== 徹底防重複與快取的隨機演算法 ====================
     async function getRandomWordFromDict() {
-      const prefix = RADICALS[Math.floor(Math.random() * RADICALS.length)];
+      let attempts = 0;
       
-      // 1. 固定 15% 的機率直接生成單字奧義卡
-      if (Math.random() < 0.15) {
-        return prefix; 
+      while (attempts < 5) { // 最多嘗試 5 次篩選出不重複的字
+        attempts++;
+        const prefix = RADICALS[Math.floor(Math.random() * RADICALS.length)];
+        
+        // 1. 固定 15% 的機率直接生成單字奧義卡
+        if (Math.random() < 0.15) {
+          if (!recentWordsHistory.includes(prefix)) {
+            pushToHistory(prefix);
+            return prefix;
+          }
+          continue;
+        }
+
+        // 2. 另外 85% 機率，前往萌典撈取 2~4 字的詞彙
+        try {
+          // 🔥 關鍵核心：加上 _t=時間戳記 殺死瀏覽器快取，並隨機多取一位數
+          const cacheBuster = Date.now() + "_" + Math.floor(Math.random() * 10000);
+          const listRes = await fetch(`https://www.moedict.tw/a/${encodeURIComponent(prefix)}.json?_t=${cacheBuster}`);
+          if (!listRes.ok) throw new Error("API 回應失敗");
+          const list = await listRes.json();
+          
+          if (list && list.length > 0) {
+            // 過濾：1. 字數 2~4，2. 不能存在於最近的重複紀錄中
+            const filteredList = list.filter(w => w.length >= 2 && w.length <= 4 && !recentWordsHistory.includes(w)); 
+            
+            if (filteredList.length > 0) {
+              const selectedWord = filteredList[Math.floor(Math.random() * filteredList.length)];
+              pushToHistory(selectedWord);
+              return selectedWord;
+            }
+          }
+        } catch (e) {
+          // 網路失敗時在地的隨機備份庫
+          const backupList = ["電腦", "冰淇淋", "萬里長城", "茶葉蛋", "熱水器", "風花雪月", "魑魅魍魎", "大顯神威", "電話", "金條", "大胖狗", "斬草除根", "雲消霧散", "雷霆萬鈞", "開門見山", "海市蜃樓"];
+          const filteredBackup = backupList.filter(w => !recentWordsHistory.includes(w));
+          const word = filteredBackup.length > 0 ? filteredBackup[Math.floor(Math.random() * filteredBackup.length)] : "智慧王";
+          pushToHistory(word);
+          return word;
+        }
       }
 
-      // 2. 另外 85% 機率，前往萌典撈取 2~4 字的詞彙
-      try {
-        const listRes = await fetch(`https://www.moedict.tw/a/${encodeURIComponent(prefix)}.json`);
-        if (!listRes.ok) throw new Error("API 回應失敗");
-        const list = await listRes.json();
-        
-        if (list && list.length > 0) {
-          // 強制過濾掉 1 字，只留下 2, 3, 4 字的詞，避免 Bug 造成全是單字
-          const filteredList = list.filter(w => w.length >= 2 && w.length <= 4); 
-          
-          if (filteredList.length > 0) {
-            return filteredList[Math.floor(Math.random() * filteredList.length)];
-          }
-        }
-        
-        // 撈取不到 2~4 字時的在地平衡方案
-        const backupList = ["電腦", "冰淇淋", "萬里長城", "茶葉蛋", "熱水器", "風花雪月", "魑魅魍魎", "大顯神威"];
-        return backupList[Math.floor(Math.random() * backupList.length)];
-      } catch (e) {
-        // 發生錯誤（如 API 延遲）時的多樣化備用詞庫，不再直接退化成單字
-        const backupList = ["電話", "金條", "大胖狗", "斬草除根", "雲消霧散", "雷霆萬鈞", "開門見山", "海市蜃樓"];
-        return backupList[Math.floor(Math.random() * backupList.length)];
+      // 如果 5 次都重複（極端情況），強制返回一個絕對獨一無二的隨機後綴詞
+      const fallback = "元宇宙" + Math.floor(Math.random() * 100);
+      return fallback;
+    }
+
+    // 紀錄歷史字詞（維持最大 15 個，避免重複）
+    function pushToHistory(word) {
+      recentWordsHistory.push(word);
+      if (recentWordsHistory.length > 15) {
+        recentWordsHistory.shift(); // 移除最舊的
       }
     }
 
     // ==================== 聯網萌典 API 解析資料 ====================
     async function fetchWordData(word) {
       try {
-        const response = await fetch(`https://www.moedict.tw/uni/${encodeURIComponent(word)}`);
+        const cacheBuster = Date.now();
+        const response = await fetch(`https://www.moedict.tw/uni/${encodeURIComponent(word)}?_t=${cacheBuster}`);
         if (!response.ok) throw new Error("API 請求失敗");
         const data = await response.json();
 
@@ -448,14 +473,11 @@
         }
 
         const wordLength = word.length;
-        
-        // 稀有度判斷：1字與4字為 SSR，其餘為 SR
         let rarity = "SR";
         if (wordLength === 1 || wordLength === 4) {
           rarity = "SSR";
         }
 
-        // 基於字數計算戰鬥數值（1字走極限分流）
         let hp, atk, def;
         if (wordLength === 1) {
           if (Math.random() < 0.5) {
@@ -473,7 +495,6 @@
           def = 5 + (wordLength * 3);
         }
 
-        // 詞性加成
         if (type === "動詞") {
           atk += 18;
           hp -= 15;
@@ -508,7 +529,7 @@
           hp: 120,
           atk: 30,
           def: 10,
-          description: "這是一個充滿魔力的神祕詞彙。(因網路原因使用備用資料)"
+          description: "這是一個充滿魔力的神祕詞彙。(因網路或快取優化使用防重複備份數據)"
         };
       }
     }
