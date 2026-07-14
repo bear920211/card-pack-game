@@ -33,7 +33,7 @@
       margin-bottom: 20px;
       background-color: rgba(236, 201, 75, 0.1);
       padding: 6px 20px;
-      border-radius: 40px; /* Capsule shape preferred */
+      border-radius: 40px; /* Capsule shape */
       border: 1px solid rgba(236, 201, 75, 0.3);
     }
 
@@ -42,7 +42,7 @@
       gap: 15px;
       background-color: #1a202c;
       padding: 8px;
-      border-radius: 40px; /* Capsule shape preferred */
+      border-radius: 40px; /* Capsule shape */
       margin-bottom: 30px;
       border: 1px solid #2d3748;
     }
@@ -55,7 +55,7 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      border-radius: 40px; /* Capsule shape preferred */
+      border-radius: 40px; /* Capsule shape */
       transition: all 0.3s ease;
     }
 
@@ -120,7 +120,7 @@
       padding: 12px 35px;
       font-size: 1rem;
       font-weight: bold;
-      border-radius: 40px; /* Capsule shape preferred */
+      border-radius: 40px; /* Capsule shape */
       cursor: pointer;
       box-shadow: 0 5px 15px rgba(49, 130, 206, 0.4);
       transition: transform 0.2s, box-shadow 0.2s;
@@ -208,10 +208,10 @@
 
     /* 單字卡特大字體 */
     .game-card.single-char .card-name {
-      font-size: 3rem;
-      margin: 10px 0;
+      font-size: 3.5rem;
+      margin: 15px 0;
       color: #fff;
-      text-shadow: 0 0 10px rgba(255,255,255,0.3);
+      text-shadow: 0 0 12px rgba(255,255,255,0.4);
     }
 
     .card-pinyin {
@@ -326,9 +326,9 @@
     <div class="shop-container">
       <div class="packs-grid">
         <div class="gacha-pack">
-          <h3 style="margin-top:0; color:#f7fafc;">全漢字部首召喚包</h3>
+          <h3 style="margin-top:0; color:#f7fafc;">全漢字典藏召喚包</h3>
           <p style="color: #a0aec0; font-size: 0.85rem; margin-bottom: 10px;">
-            教育部辭典全字庫隨機檢索！有機率開出極其罕見的<b>單字奧義卡（SSR）</b>、生活詞彙與四字成語。
+            教育部辭典全字庫隨機檢索！15% 機率開出罕見的<b>單字奧義卡（SSR）</b>，其餘為生活詞彙與經典成語。
           </p>
           <div class="pack-price">💰 150 PTS</div>
           <button class="btn-action" id="btn-draw" onclick="buyDictionaryPack()">進行字詞召喚</button>
@@ -368,12 +368,10 @@
   </div>
 
   <script>
-    // ==================== 終極混合版：成語、字根與生活詞彙字根庫 ====================
+    // ==================== 終極混合字根庫 ====================
     const RADICALS = [
-      // 現代/生活字根（容易產出 2~3 字詞，或是單字牌本身）
       "電", "機", "車", "貓", "狗", "鳥", "魚", "草", "木", "花", "水", "火", 
       "手", "腳", "心", "口", "頭", "紙", "筆", "書", "球", "燈", "冰", "茶", "飯",
-      // 古典/意象字根（容易產出 4 字成語，或是單字牌本身）
       "風", "雲", "雷", "一", "大", "千", "萬", "金", "山", "海", "空", "死", 
       "開", "天", "地", "神", "鬼", "斬", "鬥", "破", "斷", "狂", "猛", "盾"
     ];
@@ -390,35 +388,37 @@
       document.getElementById('player-gold').textContent = playerGold;
     }
 
-    // ==================== 真正全自動：隨機在教育部辭典撈取詞彙（1~4字全包） ====================
+    // ==================== 修正版：字數平衡分配分配演算法 ====================
     async function getRandomWordFromDict() {
       const prefix = RADICALS[Math.floor(Math.random() * RADICALS.length)];
       
-      // 🔥 20% 的機率直接把這個「單字」本體當作神級卡牌召喚出來！
-      if (Math.random() < 0.20) {
+      // 1. 固定 15% 的機率直接生成單字奧義卡
+      if (Math.random() < 0.15) {
         return prefix; 
       }
 
+      // 2. 另外 85% 機率，前往萌典撈取 2~4 字的詞彙
       try {
-        const searchRes = await fetch(`https://www.moedict.tw/uni/${encodeURIComponent(prefix)}`);
-        if (!searchRes.ok) return prefix; // 斷網備用
-        
-        // 萌典也支持搜尋與該字根相關的詞條
         const listRes = await fetch(`https://www.moedict.tw/a/${encodeURIComponent(prefix)}.json`);
-        if (!listRes.ok) return prefix;
+        if (!listRes.ok) throw new Error("API 回應失敗");
         const list = await listRes.json();
         
         if (list && list.length > 0) {
-          // 調整長度限制：從 1 到 4 個字通通保留
-          const filteredList = list.filter(w => w.length >= 1 && w.length <= 4); 
+          // 強制過濾掉 1 字，只留下 2, 3, 4 字的詞，避免 Bug 造成全是單字
+          const filteredList = list.filter(w => w.length >= 2 && w.length <= 4); 
           
           if (filteredList.length > 0) {
             return filteredList[Math.floor(Math.random() * filteredList.length)];
           }
         }
-        return prefix;
+        
+        // 撈取不到 2~4 字時的在地平衡方案
+        const backupList = ["電腦", "冰淇淋", "萬里長城", "茶葉蛋", "熱水器", "風花雪月", "魑魅魍魎", "大顯神威"];
+        return backupList[Math.floor(Math.random() * backupList.length)];
       } catch (e) {
-        return prefix;
+        // 發生錯誤（如 API 延遲）時的多樣化備用詞庫，不再直接退化成單字
+        const backupList = ["電話", "金條", "大胖狗", "斬草除根", "雲消霧散", "雷霆萬鈞", "開門見山", "海市蜃樓"];
+        return backupList[Math.floor(Math.random() * backupList.length)];
       }
     }
 
@@ -432,7 +432,6 @@
         const pinyin = (data.heteronyms && data.heteronyms[0].pinyin) || "無拼音";
         const bopomofo = (data.heteronyms && data.heteronyms[0].bopomofo) || "無注音";
         
-        // 抓取第一個定義
         let definition = "這是一個充滿魔力的辭典字詞。";
         let type = "其他";
         
@@ -450,16 +449,15 @@
 
         const wordLength = word.length;
         
-        // 稀有度判斷：1字神卡與4字成語為 SSR，其餘為 SR
+        // 稀有度判斷：1字與4字為 SSR，其餘為 SR
         let rarity = "SR";
         if (wordLength === 1 || wordLength === 4) {
           rarity = "SSR";
         }
 
-        // 基於字數設計基礎數值（1字走極端路線）
+        // 基於字數計算戰鬥數值（1字走極限分流）
         let hp, atk, def;
         if (wordLength === 1) {
-          // 20% 出現肉盾或神力極端卡
           if (Math.random() < 0.5) {
             hp = 80;
             atk = 75; // 極致高傷
@@ -475,7 +473,7 @@
           def = 5 + (wordLength * 3);
         }
 
-        // 詞性特色修正
+        // 詞性加成
         if (type === "動詞") {
           atk += 18;
           hp -= 15;
@@ -515,7 +513,7 @@
       }
     }
 
-    // --- 購買與召喚包 ---
+    // --- 購買與召喚邏輯 ---
     async function buyDictionaryPack() {
       if (playerGold < 150) {
         alert("❌ 學習點數不足！請去「論戰競技場」贏取點數！");
@@ -532,7 +530,6 @@
       playerGold -= 150;
       updateGoldUI();
 
-      // 完全盲抽 1~4 字字詞
       const randomWord = await getRandomWordFromDict();
       const newCard = await fetchWordData(randomWord);
 
@@ -550,7 +547,6 @@
     function createCardElement(card, isSelectable = false, index = null) {
       const cardDiv = document.createElement('div');
       
-      // 若字數為 1，加上特殊 CSS class 讓字體放大
       const isSingle = card.name.length === 1 ? 'single-char' : '';
       cardDiv.className = `game-card ${card.type} ${card.rarity} ${isSingle}`;
       
@@ -592,7 +588,7 @@
       if (screenId === 'battle-screen') prepareBattlefield();
     }
 
-    // --- 辭典背包渲染 ---
+    // --- 背包渲染 ---
     function renderInventory() {
       const list = document.getElementById('inventory-list');
       list.innerHTML = '';
@@ -635,7 +631,6 @@
       const pCard = playerInventory[activeCardIndex];
       pSpot.appendChild(createCardElement(pCard));
 
-      // 對手也改成完全聯網隨機盲抽 1~4 字
       eSpot.innerHTML = `<span class="loading-text">教育部辭典檢索對手中...</span>`;
       const randomWord = await getRandomWordFromDict();
       window.currentEnemy = await fetchWordData(randomWord);
@@ -659,7 +654,6 @@
 
       addLog(`⚔️ 舌戰開始！「${p.name}」 意圖對 「${e.name}」 進行辯論！`);
 
-      // 屬性相剋判定：動詞剋名詞，名詞剋形容詞，形容詞剋動詞
       let pDamageMult = 1.0;
       let eDamageMult = 1.0;
 
@@ -678,14 +672,12 @@
       while (p.hp > 0 && e.hp > 0 && round <= 15) {
         addLog(`[論點交鋒 第 ${round} 回合]`);
         
-        // 玩家回合
         let dmgToEnemy = Math.max(1, Math.round((p.atk * pDamageMult) - e.def));
         e.hp -= dmgToEnemy;
         addLog(`🗣️ 「${p.name}」引經據典，對「${e.name}」造成 ${dmgToEnemy} 點邏輯打擊。 (對方辯解值剩下: ${Math.max(0, e.hp)})`);
         
         if (e.hp <= 0) break;
 
-        // 敵人反駁回合
         let dmgToPlayer = Math.max(1, Math.round((e.atk * eDamageMult) - p.def));
         p.hp -= dmgToPlayer;
         addLog(`💥 「${e.name}」針鋒相對，指出「${p.name}」言談漏洞並造成 ${dmgToPlayer} 點破綻。 (我方辯解值剩下: ${Math.max(0, p.hp)})`);
@@ -693,7 +685,6 @@
         round++;
       }
 
-      // 獎勵結算
       if (p.hp > 0 && e.hp <= 0) {
         const prize = 250;
         playerGold += prize;
