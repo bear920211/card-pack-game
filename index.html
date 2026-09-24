@@ -32,7 +32,7 @@
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0.3); transform: scale(1); }
             70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); transform: scale(1.1); }
-            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1); }
+            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1.1); }
         }
 
         .info-tab-active { background: white; color: #4f46e5; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -108,6 +108,13 @@
                     <div id="nick-hint" class="text-[10px] pl-4 pt-1 h-4 font-bold"></div>
                 </div>
                 <input type="text" id="in-item" placeholder="物品名稱(必填)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
+                
+                <!-- 新增：發生/撿到/遺失時間與年份選項 -->
+                <div>
+                    <label id="time-label" class="block text-xs font-black text-slate-500 mb-1 pl-2">發生時間 (年/月/日 時間)</label>
+                    <input type="datetime-local" id="in-time" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-slate-700 text-sm">
+                </div>
+
                 <input type="text" id="in-floor" placeholder="具體位置 (例：A302、球場)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
                 <input type="text" id="in-desc" placeholder="詳細描述 (顏色、特徵)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
                 
@@ -218,6 +225,13 @@
             return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
         }
 
+        // 設定預設時間為當前 Local Time
+        function setDefaultDateTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('in-time').value = now.toISOString().slice(0, 16);
+        }
+
         // --- 校區切換邏輯 ---
         window.switchCampus = (id) => {
             currentCampus = id;
@@ -303,6 +317,8 @@
 
             const hit = buildings.find(b => checkHit(clickPos.x, clickPos.y, b));
             document.getElementById('location-name').innerText = `📍 ${hit ? hit.name : "校園開放區域"}`;
+            
+            setDefaultDateTime(); // 每次打開回報彈窗時預設載入當前時間
             document.getElementById('report-modal').classList.remove('hidden');
             adjustModalScale(); 
         };
@@ -347,7 +363,6 @@
             const canvas = document.getElementById('capture-canvas');
             const context = canvas.getContext('2d');
             
-            // 設定尺寸 (正方形裁剪)
             const size = Math.min(video.videoWidth, video.videoHeight);
             canvas.width = 600; canvas.height = 600;
             
@@ -437,13 +452,14 @@
             document.getElementById('tab-lost').className = t==='lost' ? "flex-1 py-2 rounded-xl font-black text-sm tab-lost-active" : "flex-1 py-2 rounded-xl font-black text-sm text-slate-400";
             document.getElementById('submit-btn').innerText = t === 'found' ? "確認標註 (+50 功德)" : "發布求助標記";
             document.getElementById('submit-btn').className = `w-full py-4 text-white font-black rounded-2xl shadow-lg transition ${t==='found'?'bg-indigo-600':'bg-red-500'}`;
+            document.getElementById('time-label').innerText = t === 'found' ? "拾獲時間 (年/月/日 時間)" : "遺失時間 (年/月/日 時間)";
         };
 
         window.openDetail = (id) => {
             const item = reports.find(i => i.id === id); if(!item) return;
             document.getElementById('detail-name').innerText = item.name;
             document.getElementById('detail-loc').innerText = `📍 ${item.location}`;
-            document.getElementById('detail-time').innerText = `🕒 發布時間：${formatDate(item.time)}`;
+            document.getElementById('detail-time').innerText = `🕒 發生時間：${formatDate(item.time)}`;
             document.getElementById('detail-floor').innerText = item.floor_info || "無詳細位置";
             document.getElementById('detail-finder').innerText = item.finder || "匿名";
             document.getElementById('detail-desc').innerText = item.description || "無描述內容。";
@@ -468,7 +484,13 @@
 
         document.getElementById('submit-btn').onclick = async () => {
             const nick = document.getElementById('in-nick').value.trim(), item = document.getElementById('in-item').value.trim();
+            const selectedTimeVal = document.getElementById('in-time').value;
+
             if(!nick || !item) return alert("請填寫暱稱與物品名稱！");
+            if(!selectedTimeVal) return alert("請選擇發生時間！");
+
+            const reportTimestamp = new Date(selectedTimeVal).getTime();
+
             const btn = document.getElementById('submit-btn'); btn.disabled = true; btn.innerText = "資料傳輸中...";
             try {
                 await setDoc(doc(LOST_COLL), {
@@ -476,7 +498,8 @@
                     floor_info: document.getElementById('in-floor').value,
                     description: document.getElementById('in-desc').value, location: document.getElementById('location-name').innerText.replace('📍 ',''),
                     imageUrl: document.getElementById('img-preview').src.startsWith('data:image') ? document.getElementById('img-preview').src : "",
-                    x: clickPos.x, y: clickPos.y, time: Date.now()
+                    x: clickPos.x, y: clickPos.y, 
+                    time: reportTimestamp // 使用使用者選擇的時間
                 });
                 if(currentReportTab === 'found') await updateDoc(doc(USER_COLL, nick), { merit: increment(50) }).catch(() => setDoc(doc(USER_COLL, nick), { merit: 50 }));
                 alert("發布成功！感謝熱心幫忙。"); closeModals();
