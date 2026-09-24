@@ -29,7 +29,7 @@
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0.4); transform: scale(1); }
             70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); transform: scale(1.1); }
-            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1); }
+            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1.1); }
         }
         .tab-active { background-color: #4f46e5 !important; color: white !important; }
         .tab-lost-active { background-color: #ef4444 !important; color: white !important; }
@@ -231,15 +231,17 @@
             if (timeInput) timeInput.value = now.toISOString().slice(0, 16);
         }
 
+        // ✅ 加入「年份」的時間格式化函式 (YYYY/MM/DD HH:mm)
         function formatTime(timestampOrIso) {
             if (!timestampOrIso) return "時間未知";
             const date = new Date(timestampOrIso);
             if (isNaN(date.getTime())) return "時間未知";
+            const year = date.getFullYear();
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const day = date.getDate().toString().padStart(2, '0');
             const hours = date.getHours().toString().padStart(2, '0');
             const mins = date.getMinutes().toString().padStart(2, '0');
-            return `${month}/${day} ${hours}:${mins}`;
+            return `${year}/${month}/${day} ${hours}:${mins}`;
         }
 
         let offsetX = 0, offsetY = 0, scale = 1.0; 
