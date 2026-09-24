@@ -1,154 +1,162 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <script>
-    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        window.location.href = "mobile.html"; 
-    }
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NTCU 互助會 | 拾物所</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background: #f8fafc; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: #f8fafc; overflow-x: hidden; }
+        
         .map-container {
-            position: relative; width: 100%; height: 600px;
-            background: #e2e8f0 no-repeat center/contain;
+            position: relative; width: 100%; aspect-ratio: 1191 / 855; 
+            background: #e2e8f0 no-repeat center/100% 100%;
             border-radius: 2.5rem; border: 8px solid white; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
             overflow: hidden; cursor: crosshair;
             transition: background-image 0.3s ease-in-out;
         }
+
         #shapes-layer, #pins-layer { position: absolute; inset: 0; pointer-events: none; }
-        #shapes-layer { z-index: 10; opacity: 1; } 
+        #shapes-layer { z-index: 10; opacity: 0; } 
         #pins-layer { z-index: 20; }
         .building-shape { position: absolute; background: transparent; transform-origin: center; } 
+        .is-triangle { clip-path: polygon(0% 0%, 0% 100%, 100% 100%); -webkit-clip-path: polygon(0% 0%, 0% 100%, 100% 100%); }
+        
         .floating-pin { position: absolute; transform: translate(-50%, -50%); cursor: pointer; pointer-events: auto; }
-        .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 0 12px rgba(0,0,0,0.3); animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0.4); transform: scale(1); }
-            70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); transform: scale(1.1); }
-            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1.1); }
+        .pin-dot { 
+            width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid white; 
+            box-shadow: 0 0 8px rgba(0,0,0,0.3); animation: pulse 2s infinite; 
         }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0.3); transform: scale(1); }
+            70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); transform: scale(1.1); }
+            100% { box-shadow: 0 0 0 0px rgba(79, 70, 229, 0); transform: scale(1); }
+        }
+
+        .info-tab-active { background: white; color: #4f46e5; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .tab-active { background-color: #4f46e5 !important; color: white !important; }
         .tab-lost-active { background-color: #ef4444 !important; color: white !important; }
-        .campus-tab-active { background-color: #4f46e5; color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .campus-active { background-color: #4f46e5 !important; color: white !important; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end mb-10">
-            <div class="lg:col-span-8 text-left">
+    <div class="max-w-md mx-auto pb-10">
+        <header class="flex flex-col gap-4 mb-4 text-left">
+            <div>
                 <div class="flex items-center gap-4 mb-2 flex-wrap">
-                    <h1 class="text-4xl font-[900] text-slate-800 tracking-tighter mb-2">NTCU 拾物所</h1>
+                    <h1 class="text-4xl font-[900] text-slate-800 tracking-tighter mb-1">NTCU 拾物所</h1>
                     <a href="https://line.me/ti/g2/sKxLPKDo56Eh1G9HgxpZtr5idIjMD9u7KLn3Lg" target="_blank" 
-                       class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#06C755] text-white rounded-full text-[16px] font-medium shadow-sm hover:scale-105 active:scale-95 transition-all">
-                        <span class="text-base">💬</span>
-                        <span>專屬社群</span>
+                       class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#06C755] text-white rounded-full text-[14px] font-medium shadow-sm hover:scale-105 active:scale-95 transition-all">
+                       <span>💬 專屬社群</span>
                     </a>
                 </div>
-                <p class="text-slate-600 text-lg font-medium pl-1">
-                    點擊地圖標註：<span class="text-indigo-600 font-black">藍色拾獲</span> / <span class="text-red-500 font-black">紅色遺失</span>
-                </p>
-            </div>
-            <div class="lg:col-span-4">
-                <div class="bg-white p-5 px-6 rounded-[2.5rem] shadow-md border-2 border-indigo-100 text-left w-full">
-                    <span class="text-[10px] font-black text-slate-400 block tracking-[0.2em] mb-1">TOP HERO</span>
-                    <span id="top-hero-name" class="text-2xl font-black text-amber-500 drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.1)] truncate block">載入中...</span>
+                
+                <!-- 校區切換按鈕 -->
+                <div class="flex bg-slate-100 p-1 rounded-2xl mb-4 w-fit border border-slate-200">
+                    <button onclick="switchCampus('min-sheng')" id="btn-ms" class="px-5 py-1.5 rounded-xl font-black text-xs transition-all campus-active">民生校區</button>
+                    <button onclick="switchCampus('ying-cai')" id="btn-yc" class="px-5 py-1.5 rounded-xl font-black text-xs transition-all text-slate-400">英才校區</button>
+                </div>
+
+                <div class="bg-white p-4 px-6 rounded-[2rem] shadow-sm border-2 border-indigo-100 w-full flex justify-between items-center mb-4">
+                    <div>
+                        <span class="text-[10px] font-black text-slate-400 block tracking-[0.2em]">TOP HERO</span>
+                        <span id="top-hero-name" class="text-xl font-black bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent truncate block">載入中...</span>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <div class="flex bg-slate-100 p-1 rounded-[1.8rem] mb-4 w-fit shadow-sm border border-slate-200">
-            <button onclick="switchCampus('min-sheng')" id="campus-ms" class="px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all campus-tab-active">
-                民生校區
-            </button>
-            <button onclick="switchCampus('ying-cai')" id="campus-yc" class="px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all text-slate-400 hover:text-indigo-600">
-                英才校區
-            </button>
+        <div id="map-root" class="map-container mb-6" onclick="handleMapClick(event)">
+            <div id="shapes-layer"></div>
+            <div id="pins-layer"></div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div class="lg:col-span-8">
-                <div id="map-root" class="map-container" onclick="handleMapClick(event)">
-                    <div id="shapes-layer"></div>
-                    <div id="pins-layer"></div>
-                </div>
+        <div class="bg-slate-100 p-1.5 rounded-[2.5rem] flex mb-4">
+            <button onclick="switchInfoTab('news')" id="btn-news" class="flex-1 py-3 rounded-[2rem] font-black text-sm info-tab-active flex items-center justify-center gap-2">
+                最新動態
+                <span id="news-count-badge" class="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-black">0</span>
+            </button>
+            <button onclick="switchInfoTab('rank')" id="btn-rank" class="flex-1 py-3 rounded-[2rem] font-black text-sm text-slate-500">功德榜</button>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-sm border h-[380px] overflow-hidden flex flex-col">
+            <div id="panel-news" class="flex-1 overflow-y-auto p-4">
+                <div id="items-list" class="space-y-3"></div>
             </div>
-            <div class="lg:col-span-4 flex flex-col gap-6">
-                <div class="bg-indigo-500/40 backdrop-blur-md rounded-[2.5rem] p-6 text-white shadow-xl border border-white/20">
-                    <h3 class="font-bold mb-4 text-xl flex items-center gap-2 text-white drop-shadow-sm">🏆 功德榜</h3>
-                    <div id="leaderboard" class="space-y-2 text-xs"></div>
-                </div>
-                <div class="bg-white rounded-[2.5rem] shadow-sm border h-[400px] flex flex-col overflow-hidden">
-                    <div class="p-5 border-b bg-slate-50 font-black text-slate-600 text-sm flex justify-between">
-                        <span>最新動態</span>
-                        <span id="items-count" class="text-indigo-500 font-bold">0</span>
-                    </div>
-                    <div id="items-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
-                </div>
-                <div class="bg-indigo-50 border border-indigo-100 rounded-[2rem] py-3 px-4 text-left flex items-center gap-3 shadow-sm">
-                    <span class="text-xl animate-pulse leading-none">📢</span>
-                    <p class="text-[11.5px] text-indigo-700 font-bold leading-relaxed">
-                        發布時，使用與LINE社群相同暱稱，增加87%尋回率！
-                    </p>
-                </div>
+            <div id="panel-rank" class="hidden flex-1 overflow-y-auto p-6">
+                <div id="leaderboard" class="space-y-4"></div>
             </div>
         </div>
     </div>
 
-    <!-- Report Modal -->
-    <div id="report-modal" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center z-[300] p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-[2.5rem] max-w-sm w-full p-6 shadow-2xl text-center">
-            <div class="flex bg-slate-100 p-1 rounded-2xl mb-4">
-                <button onclick="switchTab('found')" id="tab-found" class="flex-1 py-2 rounded-xl font-black text-sm tab-active">撿到東西</button>
-                <button onclick="switchTab('lost')" id="tab-lost" class="flex-1 py-2 rounded-xl font-black text-sm text-slate-400">遺失物品</button>
+    <!-- 報修/拾獲 彈窗 (Report Modal) -->
+    <div id="report-modal" class="fixed inset-0 bg-slate-900/40 hidden z-[300] p-4 backdrop-blur-sm touch-none">
+        <div id="report-content" class="bg-white rounded-[2.5rem] w-full max-w-[350px] max-h-[90vh] flex flex-col p-6 shadow-2xl text-center overflow-hidden touch-auto">
+            <div class="flex-shrink-0 flex bg-slate-100 p-1 rounded-2xl mb-4">
+                <button onclick="switchReportTab('found')" id="tab-found" class="flex-1 py-2 rounded-xl font-black text-sm tab-active">撿到東西</button>
+                <button onclick="switchReportTab('lost')" id="tab-lost" class="flex-1 py-2 rounded-xl font-black text-sm text-slate-400">遺失物品</button>
             </div>
-            <div class="mb-5"><div id="location-name" class="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-700 text-base font-black rounded-2xl">定位中...</div></div>
-            <div class="space-y-3 mb-6 text-left">
-                <div class="relative">
-                    <input type="text" id="in-nick" maxlength="10" placeholder="暱稱(必填，最多10字)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none">
-                    <p id="nick-hint" class="text-[10px] mt-1 ml-2 font-bold text-slate-400"></p>
-                </div>
+            <div class="flex-shrink-0 mb-4"><div id="location-name" class="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-700 text-base font-black rounded-2xl">定位中...</div></div>
+            
+            <div class="flex-1 overflow-y-auto space-y-3 mb-6 text-left px-1">
                 <div>
-                    <label class="block text-[11px] font-black text-slate-400 mb-1 pl-2">發生 / 拾獲時間</label>
-                    <input type="datetime-local" id="in-datetime" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-sm text-slate-700">
+                    <input type="text" id="in-nick" maxlength="10" placeholder="暱稱(必填，最多10字)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
+                    <div id="nick-hint" class="text-[10px] pl-4 pt-1 h-4 font-bold"></div>
                 </div>
-                <input type="text" id="in-item" placeholder="物品名稱(必填)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none">
-                <input type="text" id="in-floor" placeholder="具體位置 (例：A302、球場)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none">
-                <input type="text" id="in-desc" placeholder="詳細描述 (顏色特徵、外觀)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none">
-                <div class="p-3 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer text-center" onclick="document.getElementById('in-file').click()">
+                <input type="text" id="in-item" placeholder="物品名稱(必填)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
+                <input type="text" id="in-floor" placeholder="具體位置 (例：A302、球場)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
+                <input type="text" id="in-desc" placeholder="詳細描述 (顏色、特徵)" class="w-full px-5 py-3 bg-slate-50 border rounded-2xl font-bold outline-none text-base">
+                
+                <!-- 拍照與上傳區塊 -->
+                <div class="p-4 border-2 border-dashed border-slate-200 rounded-2xl text-center relative bg-slate-50">
                     <input type="file" id="in-file" accept="image/*" class="hidden" onchange="previewImage(this)">
-                    <div id="preview-container" class="hidden"><img id="img-preview" src="" class="rounded-xl mx-auto max-h-24 object-cover"></div>
-                    <div id="upload-placeholder" class="text-slate-400 text-[14px]">📷 上傳圖片 (選填)</div>
+                    <div id="preview-container" class="hidden mb-2">
+                        <img id="img-preview" src="" class="rounded-xl mx-auto max-h-24 object-cover border-2 border-white shadow-sm">
+                        <button onclick="clearImage()" class="text-red-500 text-[10px] font-black mt-1">移除照片</button>
+                    </div>
+                    
+                    <!-- 即時拍照區域 (隱藏) -->
+                    <div id="camera-box" class="hidden mb-2 rounded-xl overflow-hidden bg-black">
+                        <video id="camera-stream" autoplay playsinline class="w-full aspect-square object-cover"></video>
+                        <button id="snap-btn" class="bg-indigo-600 text-white w-full py-2 text-xs font-black">拍攝</button>
+                    </div>
+
+                    <div id="upload-placeholder" class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <button onclick="openCamera()" class="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-black text-slate-600 shadow-sm active:scale-95 transition">📷 拍照</button>
+                            <button onclick="document.getElementById('in-file').click()" class="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-black text-slate-600 shadow-sm active:scale-95 transition">📁 上傳</button>
+                        </div>
+                        <p class="text-slate-400 text-[10px] font-bold">點擊按鈕新增圖片 (選填)</p>
+                    </div>
                 </div>
             </div>
-            <button id="submit-btn" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg transition">確認標註 (+50 功德)</button>
-            <button onclick="closeModals()" class="mt-4 text-slate-400 font-bold text-xs">取消</button>
+            <div class="flex-shrink-0">
+                <button id="submit-btn" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg transition">確認標註 (+50 功德)</button>
+                <button onclick="closeModals()" class="mt-4 text-slate-400 font-bold text-xs uppercase tracking-widest">取消</button>
+            </div>
         </div>
     </div>
 
-    <!-- Detail Modal -->
+    <!-- 詳情彈窗 (Detail Modal) -->
     <div id="detail-modal" class="fixed inset-0 bg-slate-900/60 hidden flex items-center justify-center z-[400] p-4 backdrop-blur-md">
-        <div class="bg-white rounded-[2.5rem] max-w-sm w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div id="detail-header-color" class="w-full bg-slate-100 flex items-center justify-center relative min-h-[150px]">
-                <img id="detail-img" src="" class="w-full h-auto max-h-[50vh] object-contain block">
-                <div id="no-img-placeholder" class="hidden text-slate-300 font-bold text-sm py-20">📷 無照片預覽</div>
-                <div id="type-tag" class="absolute top-4 left-4 px-4 py-1 rounded-full text-[10px] font-black text-white z-10 shadow-md"></div>
+        <div class="bg-white rounded-[2.5rem] w-full max-w-[350px] max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+            <div class="flex-shrink-0 w-full h-[200px] bg-slate-100 flex items-center justify-center relative border-b">
+               <img id="detail-img" src="" class="w-full h-full object-contain block">
+                <div id="no-img-placeholder" class="hidden text-slate-300 font-black text-sm py-16">📷 無照片預覽</div>
+                <div id="type-tag" class="absolute top-4 left-4 px-4 py-1 rounded-full text-[10px] font-black text-white z-10 shadow-lg"></div>
             </div>
-            <div class="p-6 overflow-y-auto text-left">
-                <h2 id="detail-name" class="text-2xl font-black text-slate-800 line-clamp-1">物品名稱</h2>
-                <div class="flex justify-between items-center mb-4">
-                    <p id="detail-loc" class="text-slate-400 font-bold text-sm truncate"></p>
-                    <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-lg text-slate-500 font-bold">由 <span id="detail-finder"></span> 提供</span>
+            <div class="flex-1 overflow-y-auto p-6 text-left">
+                <h2 id="detail-name" class="text-2xl font-black text-slate-800 mb-1 leading-tight"></h2>
+                <div class="flex justify-between items-center mb-1">
+                    <p id="detail-loc" class="text-slate-400 font-bold text-xs"></p>
+                    <span class="text-[9px] bg-slate-100 px-2 py-0.5 rounded-lg text-slate-500 font-black italic">由 <span id="detail-finder"></span> 提供</span>
                 </div>
+                <p id="detail-time" class="text-[10px] text-slate-400 font-bold mb-4"></p>
                 <div class="space-y-3 mb-6">
-                    <div class="bg-slate-50 rounded-2xl p-4 border-l-4 border-slate-400">
-                        <p class="text-[9px] text-slate-400 font-black uppercase mb-1">發生 / 拾獲時間</p>
-                        <p id="detail-time" class="font-bold text-sm text-slate-700"></p>
-                    </div>
                     <div class="bg-indigo-50/50 rounded-2xl p-4 border-l-4 border-indigo-500">
                         <p class="text-[9px] text-indigo-400 font-black uppercase mb-1">具體位置</p>
                         <p id="detail-floor" class="font-bold text-sm text-slate-700"></p>
@@ -158,18 +166,22 @@
                         <p id="detail-desc" class="font-bold text-sm text-slate-700"></p>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button id="btn-claim-now" class="flex-1 py-4 bg-emerald-500 text-white font-black rounded-2xl">是我的！</button>
-                    <button onclick="closeDetail()" class="px-6 py-4 bg-slate-100 text-slate-400 font-bold rounded-2xl">關閉</button>
-                </div>
+            </div>
+            <div class="flex-shrink-0 p-6 pt-0 flex gap-2">
+                <button id="btn-claim-now" class="flex-1 py-4 bg-emerald-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition">是我的！</button>
+                <button onclick="closeDetail()" class="px-6 py-4 bg-slate-100 text-slate-400 font-bold rounded-2xl transition">關閉</button>
             </div>
         </div>
     </div>
+
+    <!-- 隱藏畫板用於壓縮與拍照 -->
+    <canvas id="capture-canvas" class="hidden"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, increment, query, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Firebase 設定與初始化
         const firebaseConfig = {
             apiKey: "AIzaSyDnKRElPR1agzd5Lknzbqrv9kJtiD_bKsY",
             authDomain: "lostandnotfound-6d007.firebaseapp.com",
@@ -189,254 +201,200 @@
             'ying-cai': { bg: 'https://i.ibb.co/pBg8Wzdm/2.png', docId: 'NTCU-CAMPUS-YINGCAI' }
         };
 
-        let currentTab = 'found', currentCampus = 'min-sheng';
+        let currentReportTab = 'found', currentCampus = 'min-sheng';
         let buildings = [], reports = [], clickPos = {x:50, y:50};
         let campusUnsubscribe = null;
+        let offsetX = 0, offsetY = 0, scale = 1.0;
+        let activeStream = null;
 
-        function checkHit(px, py, b) {
-            if (b.type === 'poly' && b.points) {
-                let inside = false;
-                for (let i = 0, j = b.points.length - 1; i < b.points.length; j = i++) {
-                    const xi = b.points[i].x, yi = b.points[i].y;
-                    const xj = b.points[j].x, yj = b.points[j].y;
-                    if (((yi > py) != (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
-                }
-                return inside;
-            }
-            if (b.type === 'circle') {
-                const rx = b.w / 2, ry = b.h / 2, cx = b.x + rx, cy = b.y + ry;
-                return (Math.pow(px - cx, 2) / Math.pow(rx, 2)) + (Math.pow(py - cy, 2) / Math.pow(ry, 2)) <= 1;
-            }
-            const rad = (b.angle || 0) * Math.PI / 180;
-            const cx = b.x + b.w/2, cy = b.y + b.h/2;
-            const dx = px - cx, dy = py - cy;
-            const rx = dx * Math.cos(-rad) - dy * Math.sin(-rad);
-            const ry = dx * Math.sin(-rad) + dy * Math.cos(-rad);
-            if (b.name === "環境樓") {
-                const x1 = -b.w/2, y1 = -b.h/2, x2 = -b.w/2, y2 = b.h/2, x3 = b.w/2, y3 = b.h/2;
-                const getArea = (xa,ya,xb,yb,xc,yc) => Math.abs((xa*(yb-yc)+xb*(yc-ya)+xc*(ya-yb))/2);
-                const total = getArea(x1,y1,x2,y2,x3,y3);
-                const pArea = getArea(rx,ry,x1,y1,x2,y2) + getArea(rx,ry,x2,y2,x3,y3) + getArea(rx,ry,x3,y3,x1,y1);
-                return Math.abs(total - pArea) < 1.0;
-            }
-            const bw = b.w / 2 + 1.0;
-            const bh = b.h / 2 + 1.0;
-            return rx >= -bw && rx <= bw && ry >= -bh && ry <= bh;
+        function formatDate(timestamp) {
+            if (!timestamp) return "";
+            const date = new Date(timestamp);
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
         }
 
-        function setDefaultDatetime() {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const timeInput = document.getElementById('in-datetime');
-            if (timeInput) timeInput.value = now.toISOString().slice(0, 16);
-        }
-
-        // ✅ 時間格式化函式 (傳回年月日與時間的物件，方便彈性排版)
-        function formatTimeParts(timestampOrIso) {
-            if (!timestampOrIso) return { dateStr: "未知日期", timeStr: "未知時間", full: "時間未知" };
-            const date = new Date(timestampOrIso);
-            if (isNaN(date.getTime())) return { dateStr: "未知日期", timeStr: "未知時間", full: "時間未知" };
-            
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            const hours = date.getHours().toString().padStart(2, '0');
-            const mins = date.getMinutes().toString().padStart(2, '0');
-
-            const dateStr = `${year}/${month}/${day}`;
-            const timeStr = `${hours}:${mins}`;
-            return {
-                dateStr,
-                timeStr,
-                full: `${dateStr} ${timeStr}`
-            };
-        }
-
-        function formatTime(timestampOrIso) {
-            return formatTimeParts(timestampOrIso).full;
-        }
-
-        let offsetX = 0, offsetY = 0, scale = 1.0; 
-
+        // --- 校區切換邏輯 ---
         window.switchCampus = (id) => {
             currentCampus = id;
             const config = campusSettings[id];
             const mapRoot = document.getElementById('map-root');
             mapRoot.style.backgroundImage = `url('${config.bg}')`;
-
-            const isYingCai = (id === 'ying-cai');
-            mapRoot.style.backgroundSize = isYingCai ? '100% 100%' : 'contain';
-
-            const btnMs = document.getElementById('campus-ms');
-            const btnYc = document.getElementById('campus-yc');
-            btnMs.className = !isYingCai ? "px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all campus-tab-active" : "px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all text-slate-400 hover:text-indigo-600";
-            btnYc.className = isYingCai ? "px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all campus-tab-active" : "px-8 py-2 rounded-[1.5rem] font-black text-sm transition-all text-slate-400 hover:text-indigo-600";
-
-            const refreshShapes = () => {
-                const layer = document.getElementById('shapes-layer');
-                layer.style.opacity = "1"; 
-
-                layer.innerHTML = buildings.map(b => {
-                    const debugStyle = "background: transparent; border: none;";
-                    const finalW = b.w * scale;
-                    const finalH = b.h * scale;
-                    const finalX = b.x * scale + offsetX;
-                    const finalY = b.y * scale + offsetY;
-
-                    if (isYingCai && b.type === 'poly' && b.points) {
-                        const path = b.points.map(p => `${p.x * scale + offsetX}% ${p.y * scale + offsetY}%`).join(',');
-                        return `<div class="building-shape" style="position:absolute; inset:0; clip-path:polygon(${path}); -webkit-clip-path:polygon(${path}); ${debugStyle}"></div>`;
-                    } else {
-                        return `<div class="building-shape" style="position:absolute; left:${finalX}%; top:${finalY}%; width:${finalW}%; height:${finalH}%; transform:rotate(${b.angle || 0}deg); ${debugStyle}"></div>`;
-                    }
-                }).join('');
-                
-                renderPins(); 
-            };
+            
+            document.getElementById('btn-ms').className = (id==='min-sheng') ? "px-5 py-1.5 rounded-xl font-black text-xs transition-all campus-active" : "px-5 py-1.5 rounded-xl font-black text-xs transition-all text-slate-400";
+            document.getElementById('btn-yc').className = (id==='ying-cai') ? "px-5 py-1.5 rounded-xl font-black text-xs transition-all campus-active" : "px-5 py-1.5 rounded-xl font-black text-xs transition-all text-slate-400";
 
             if(campusUnsubscribe) campusUnsubscribe();
             campusUnsubscribe = onSnapshot(doc(db, "campus_data", config.docId), (snap) => {
                 if (snap.exists()) {
                     buildings = snap.data().buildings || [];
-                    refreshShapes();
+                    renderShapes();
                 }
             });
 
-            if (isYingCai) {
-                window.onkeydown = (e) => {
-                    const step = 0.1; 
-                    if (e.key === "ArrowUp") offsetY -= step;
-                    if (e.key === "ArrowDown") offsetY += step;
-                    if (e.key === "ArrowLeft") offsetX -= step;
-                    if (e.key === "ArrowRight") offsetX += step;
-                    if (e.key.toLowerCase() === "w") scale += 0.01;
-                    if (e.key.toLowerCase() === "s") scale -= 0.01;
-                    refreshShapes();
-                };
-            } else {
-                window.onkeydown = null;
-                offsetX = 0; offsetY = 0; scale = 1.0;
-            }
-
+            offsetX = 0; offsetY = 0; scale = 1.0;
             renderPins();
             renderList();
         };
 
-        document.getElementById('in-nick').addEventListener('change', async (e) => {
-            const nick = e.target.value.trim();
-            const hint = document.getElementById('nick-hint');
-            if(!nick) { hint.innerText = ""; return; }
-            hint.innerText = "查詢中...";
-            try {
-                const userSnap = await getDoc(doc(USER_COLL, nick));
-                if(userSnap.exists()) {
-                    hint.innerHTML = `✅ 已識別，目前功德：<span class="text-indigo-600 font-black">${userSnap.data().merit || 0}</span>`;
+        // --- 繪製隱藏判定層 ---
+        function renderShapes() {
+            const layer = document.getElementById('shapes-layer');
+            const isYingCai = currentCampus === 'ying-cai';
+            layer.innerHTML = buildings.map(b => {
+                const finalW = b.w * scale, finalH = b.h * scale;
+                const finalX = b.x * scale + offsetX, finalY = b.y * scale + offsetY;
+                
+                if (isYingCai && b.type === 'poly' && b.points) {
+                    const path = b.points.map(p => `${p.x * scale + offsetX}% ${p.y * scale + offsetY}%`).join(',');
+                    return `<div class="building-shape" style="position:absolute; inset:0; clip-path:polygon(${path}); -webkit-clip-path:polygon(${path});"></div>`;
                 } else {
-                    hint.innerHTML = `✨ <span class="text-emerald-500 font-black">歡迎加入。</span>`;
+                    return `<div class="building-shape ${b.name==='環境樓'?'is-triangle':''}" style="left:${finalX}%; top:${finalY}%; width:${finalW}%; height:${finalH}%; transform:rotate(${b.angle || 0}deg);"></div>`;
                 }
-            } catch(e) { hint.innerText = ""; }
-        });
+            }).join('');
+        }
+
+        function checkHit(px, py, b) {
+            if (b.type === 'poly' && b.points) {
+                let inside = false;
+                for (let i = 0, j = b.points.length - 1; i < b.points.length; j = i++) {
+                    const xi = b.points[i].x * scale + offsetX, yi = b.points[i].y * scale + offsetY;
+                    const xj = b.points[j].x * scale + offsetX, yj = b.points[j].y * scale + offsetY;
+                    if (((yi > py) != (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
+                }
+                return inside;
+            }
+            if (b.type === 'circle') {
+                const rx = (b.w * scale) / 2, ry = (b.h * scale) / 2;
+                const cx = (b.x * scale + offsetX) + rx, cy = (b.y * scale + offsetY) + ry;
+                return (Math.pow(px - cx, 2) / Math.pow(rx, 2)) + (Math.pow(py - cy, 2) / Math.pow(ry, 2)) <= 1;
+            }
+            const rad = (b.angle || 0) * Math.PI / 180;
+            const bw = b.w * scale, bh = b.h * scale;
+            const cx = (b.x * scale + offsetX) + bw/2, cy = (b.y * scale + offsetY) + bh/2;
+            const dx = px - cx, dy = py - cy;
+            const rx = dx * Math.cos(-rad) - dy * Math.sin(-rad);
+            const ry = dx * Math.sin(-rad) + dy * Math.cos(-rad);
+
+            if (b.name === "環境樓") {
+                const x1 = -bw/2, y1 = -bh/2, x2 = -bw/2, y2 = bh/2, x3 = bw/2, y3 = bh/2;
+                const getArea = (xa,ya,xb,yb,xc,yc) => Math.abs((xa*(yb-yc)+xb*(yc-ya)+xc*(ya-yb))/2);
+                const total = getArea(x1,y1,x2,y2,x3,y3);
+                const pArea = getArea(rx,ry,x1,y1,x2,y2) + getArea(rx,ry,x2,y2,x3,y3) + getArea(rx,ry,x3,y3,x1,y1);
+                return Math.abs(total - pArea) < 1.0;
+            }
+
+            const halfW = bw / 2 + 1.0, halfH = bh / 2 + 1.0;
+            return rx >= -halfW && rx <= halfW && ry >= -halfH && ry <= halfH;
+        }
 
         window.handleMapClick = (e) => {
-            const r = document.getElementById('map-root').getBoundingClientRect();
-            clickPos = { x:((e.clientX-r.left)/r.width)*100, y:((e.clientY-r.top)/r.height)*100 };
+            const mapRoot = document.getElementById('map-root');
+            const r = mapRoot.getBoundingClientRect();
+            const border = 8;
+            const xPx = e.clientX - r.left - border;
+            const yPx = e.clientY - r.top - border;
+            const innerW = r.width - (border * 2), innerH = r.height - (border * 2);
+            clickPos = { x: (xPx / innerW) * 100, y: (yPx / innerH) * 100 };
+
             const hit = buildings.find(b => checkHit(clickPos.x, clickPos.y, b));
             document.getElementById('location-name').innerText = `📍 ${hit ? hit.name : "校園開放區域"}`;
-            setDefaultDatetime();
             document.getElementById('report-modal').classList.remove('hidden');
+            adjustModalScale(); 
         };
 
+        const adjustModalScale = () => {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('report-content');
+            if (!modal || modal.classList.contains('hidden')) return;
+            if (window.visualViewport && window.visualViewport.scale > 1) {
+                const v = window.visualViewport;
+                modal.style.position = 'absolute'; modal.style.inset = '0';
+                content.style.position = 'absolute';
+                content.style.left = `${v.offsetLeft + (v.width/2)}px`;
+                content.style.top = `${v.offsetTop + (v.height/2)}px`;
+                content.style.transform = `translate(-50%, -50%) scale(${1 / v.scale})`;
+            } else {
+                modal.style.position = 'fixed'; content.style.position = ''; content.style.transform = "";
+            }
+        };
+
+        // --- 拍照相關邏輯 ---
+        window.openCamera = async () => {
+            const cameraBox = document.getElementById('camera-box');
+            const video = document.getElementById('camera-stream');
+            const placeholder = document.getElementById('upload-placeholder');
+            
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, 
+                    audio: false 
+                });
+                video.srcObject = activeStream;
+                cameraBox.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } catch (err) {
+                alert("無法存取相機，請檢查權限設定。");
+            }
+        };
+
+        document.getElementById('snap-btn').onclick = () => {
+            const video = document.getElementById('camera-stream');
+            const canvas = document.getElementById('capture-canvas');
+            const context = canvas.getContext('2d');
+            
+            // 設定尺寸 (正方形裁剪)
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = 600; canvas.height = 600;
+            
+            context.drawImage(
+                video, 
+                (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size, 
+                0, 0, 600, 600
+            );
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            document.getElementById('img-preview').src = dataUrl;
+            document.getElementById('preview-container').classList.remove('hidden');
+            stopCamera();
+        };
+
+        function stopCamera() {
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
+            }
+            document.getElementById('camera-box').classList.add('hidden');
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+        }
+
+        window.clearImage = () => {
+            document.getElementById('img-preview').src = '';
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+        };
+
+        // --- Firebase 即時監聽 ---
         onSnapshot(LOST_COLL, (s) => {
             reports = s.docs.map(d => ({ id: d.id, ...d.data() }));
             renderPins(); renderList();
         });
 
-        onSnapshot(query(USER_COLL, orderBy("merit", "desc"), limit(5)), (s) => {
-            document.getElementById('leaderboard').innerHTML = s.docs.map((d, i) => {
-                const isTopThree = i < 3;
-                let medalClass = i === 0 ? "bg-amber-400 text-amber-900 shadow-sm" : i === 1 ? "bg-slate-300 text-slate-800" : i === 2 ? "bg-orange-300 text-orange-900" : "";
-                return `<div class="flex justify-between items-center p-2.5 bg-white/85 backdrop-blur-md rounded-xl mb-2 border border-white/60 shadow-sm transition-all">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 flex justify-center">
-                            ${isTopThree ? `<span class="w-7 h-7 flex items-center justify-center rounded-full font-black text-[13px] ${medalClass}">${i + 1}</span>` : `<span class="text-slate-500 font-medium text-[14px] ml-1">${i + 1}.</span>`}
-                        </div>
-                        <span class="text-slate-800 font-semibold text-[16px]">${d.id}</span>
+        onSnapshot(query(USER_COLL, orderBy("merit", "desc"), limit(6)), (s) => {
+            document.getElementById('leaderboard').innerHTML = s.docs.map((d, i) => `
+                <div class="flex items-center gap-3 py-1">
+                    <div class="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full font-black text-xs ${i<3 ? 'bg-amber-400 text-white' : 'bg-slate-100 text-slate-400'}">${i + 1}</div>
+                    <div class="flex-1 min-w-0 border-b border-slate-50 pb-2 flex justify-between items-center">
+                        <span class="font-semibold text-slate-700 truncate mr-2 text-[15px]">${d.id}</span>
+                        <span class="font-black text-indigo-600 text-sm flex-shrink-0">${d.data().merit || 0} <span class="text-[10px] text-slate-400">🪵🐟</span></span>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="font-black text-orange-600 text-[20px]">${d.data().merit || 0}</span>
-                        <span class="text-[11px] font-bold text-slate-500">🧱🐟</span>
-                    </div>
-                </div>`;
-            }).join('');
+                </div>`).join('');
             if(s.docs[0]) document.getElementById('top-hero-name').innerText = s.docs[0].id;
         });
-
-        window.switchTab = (t) => {
-            currentTab = t;
-            document.getElementById('tab-found').className = t==='found' ? "flex-1 py-2 rounded-xl font-black text-sm tab-active" : "flex-1 py-2 rounded-xl font-black text-sm text-slate-400";
-            document.getElementById('tab-lost').className = t==='lost' ? "flex-1 py-2 rounded-xl font-black text-sm tab-lost-active" : "flex-1 py-2 rounded-xl font-black text-sm text-slate-400"; 
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = t === 'found' ? "確認標註 (+50 功德)" : "發布求助標記";
-            btn.className = `w-full py-4 text-white font-black rounded-2xl shadow-lg transition ${t==='found'?'bg-indigo-600':'bg-red-500'}`;
-        };
-
-        document.getElementById('submit-btn').onclick = async () => {
-            const nick = document.getElementById('in-nick').value.trim();
-            const item = document.getElementById('in-item').value.trim();
-            if(!nick || !item) return alert("請填寫必填欄位！");
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true; btn.innerText = "上傳中...";
-            try {
-                const datetimeVal = document.getElementById('in-datetime').value;
-                await setDoc(doc(LOST_COLL), {
-                    type: currentTab, name: item, finder: nick, campus: currentCampus,
-                    eventTime: datetimeVal ? new Date(datetimeVal).toISOString() : new Date().toISOString(),
-                    floor_info: document.getElementById('in-floor').value,
-                    description: document.getElementById('in-desc').value,
-                    location: document.getElementById('location-name').innerText.replace('📍 ',''),
-                    imageUrl: document.getElementById('img-preview').src.startsWith('data:image') ? document.getElementById('img-preview').src : "",
-                    x: clickPos.x, y: clickPos.y, time: Date.now()
-                });
-                if(currentTab === 'found') {
-                    await updateDoc(doc(USER_COLL, nick), { merit: increment(50) }).catch(async () => {
-                        await setDoc(doc(USER_COLL, nick), { merit: 50 });
-                    });
-                }
-                alert("發布成功！");
-                closeModals();
-            } catch(e) { alert("失敗！"); btn.disabled = false; }
-        };
-
-        window.openDetail = (id) => {
-            const item = reports.find(i => i.id === id); if(!item) return;
-            const tag = document.getElementById('type-tag'), claimBtn = document.getElementById('btn-claim-now');
-            tag.innerText = item.type === 'found' ? '拾獲物' : '協尋中';
-            tag.className = `absolute top-4 left-4 px-4 py-1 rounded-full text-[10px] font-black text-white z-10 ${item.type==='found'?'bg-indigo-600':'bg-red-500'}`;
-            claimBtn.innerText = item.type === 'found' ? '是我的！' : '找到了！';
-            document.getElementById('detail-name').innerText = item.name;
-            document.getElementById('detail-loc').innerText = `📍 ${item.location}`;
-            document.getElementById('detail-time').innerText = formatTime(item.eventTime || item.time);
-            document.getElementById('detail-floor').innerText = item.floor_info || "尚未提供位置";
-            document.getElementById('detail-finder').innerText = item.finder || "匿名英雄";
-            document.getElementById('detail-desc').innerText = item.description || "無描述。";
-            const img = document.getElementById('detail-img'), ph = document.getElementById('no-img-placeholder');
-            if(item.imageUrl) { img.src = item.imageUrl; img.classList.remove('hidden'); ph.classList.add('hidden'); }
-            else { img.classList.add('hidden'); ph.classList.remove('hidden'); }
-            
-            claimBtn.onclick = async () => {
-                if(confirm(item.type === 'found' ? '確認要領回這件物品嗎？' : '您是否已經找回這件遺失物？')){
-                    if(item.type === 'found' && item.finder) {
-                        await updateDoc(doc(USER_COLL, item.finder), { merit: increment(20) }).catch(() => {
-                            setDoc(doc(USER_COLL, item.finder), { merit: 20 });
-                        });
-                        alert(`認領完成！已發放 20 功德給好心人：${item.finder}`);
-                    }
-                    await deleteDoc(doc(db, "all_reports_v3", id));
-                    closeDetail();
-                }
-            };
-            document.getElementById('detail-modal').classList.remove('hidden');
-        };
 
         function renderPins() {
             const layer = document.getElementById('pins-layer'); layer.innerHTML = '';
@@ -448,49 +406,94 @@
                 p.onclick = (e) => { e.stopPropagation(); openDetail(i.id); };
                 layer.appendChild(p);
             });
+            document.getElementById('news-count-badge').innerText = filtered.length;
         }
 
-        // ✅ 最新動態列表：同樣顯示完整年份 (格式：YYYY/MM/DD HH:mm)
         function renderList() {
+            const list = document.getElementById('items-list');
             const filtered = reports.filter(i => (i.campus || 'min-sheng') === currentCampus);
-            document.getElementById('items-count').innerText = filtered.length;
-            document.getElementById('items-list').innerHTML = filtered
-                .sort((a,b) => (b.time || 0) - (a.time || 0))
-                .map(i => {
-                    const t = formatTimeParts(i.eventTime || i.time);
-                    return `<div onclick="openDetail('${i.id}')" class="p-3 bg-white rounded-2xl border-l-4 ${i.type==='found'?'border-indigo-500':'border-red-500'} flex items-start gap-3 cursor-pointer shadow-sm hover:shadow-md transition-all">
-                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden mt-0.5">
-                            ${i.imageUrl ? `<img src="${i.imageUrl}" class="w-full h-full object-cover">` : '<span class="text-lg">🎁</span>'}
-                        </div>
-                        <div class="flex-1 min-w-0 text-left font-bold text-sm text-slate-700">
-                            <div class="flex justify-between items-start gap-2">
-                                <span class="truncate text-slate-800">${i.name}</span>
-                                <div class="text-[10px] text-slate-400 font-normal text-right shrink-0 leading-tight">
-                                    <div>${t.dateStr}</div>
-                                    <div>${t.timeStr}</div>
-                                </div>
-                            </div>
-                            <div class="text-[11px] text-slate-400 font-normal truncate mt-0.5">📍 ${i.location}</div>
-                        </div>
-                    </div>`;
-                }).join('');
+            list.innerHTML = filtered.sort((a,b)=>b.time-a.time).map(i => {
+                const isFound = i.type === 'found';
+                return `<div onclick="openDetail('${i.id}')" style="border-left: 6px solid ${isFound ? '#4f46e5' : '#ef4444'};" class="p-3 bg-white rounded-2xl flex items-center gap-3 cursor-pointer shadow-sm border border-slate-100 mb-3 active:scale-[0.98] transition-all">
+                    <div class="w-10 h-10 bg-slate-50 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-50">${i.imageUrl ? `<img src="${i.imageUrl}" class="w-full h-full object-cover">` : '<span class="text-lg">🎁</span>'}</div>
+                    <div class="flex-1 truncate text-left font-black text-sm text-slate-700">${i.name}<div class="text-[10px] text-slate-400 font-bold">📍 ${i.location} • ${formatDate(i.time)}</div></div>
+                    <div class="text-[9px] font-black ${isFound ? 'text-indigo-600' : 'text-red-600'} bg-slate-50 px-2 py-1 rounded border border-slate-100">${isFound ? '拾獲' : '遺失'}</div>
+                </div>`;
+            }).join('');
         }
+
+        // --- 互動功能 ---
+        window.switchInfoTab = (tab) => {
+            const isNews = tab === 'news';
+            document.getElementById('btn-news').classList.toggle('info-tab-active', isNews);
+            document.getElementById('btn-rank').classList.toggle('info-tab-active', !isNews);
+            document.getElementById('panel-news').classList.toggle('hidden', !isNews);
+            document.getElementById('panel-rank').classList.toggle('hidden', isNews);
+        };
+
+        window.switchReportTab = (t) => {
+            currentReportTab = t;
+            document.getElementById('tab-found').className = t==='found' ? "flex-1 py-2 rounded-xl font-black text-sm tab-active" : "flex-1 py-2 rounded-xl font-black text-sm text-slate-400";
+            document.getElementById('tab-lost').className = t==='lost' ? "flex-1 py-2 rounded-xl font-black text-sm tab-lost-active" : "flex-1 py-2 rounded-xl font-black text-sm text-slate-400";
+            document.getElementById('submit-btn').innerText = t === 'found' ? "確認標註 (+50 功德)" : "發布求助標記";
+            document.getElementById('submit-btn').className = `w-full py-4 text-white font-black rounded-2xl shadow-lg transition ${t==='found'?'bg-indigo-600':'bg-red-500'}`;
+        };
+
+        window.openDetail = (id) => {
+            const item = reports.find(i => i.id === id); if(!item) return;
+            document.getElementById('detail-name').innerText = item.name;
+            document.getElementById('detail-loc').innerText = `📍 ${item.location}`;
+            document.getElementById('detail-time').innerText = `🕒 發布時間：${formatDate(item.time)}`;
+            document.getElementById('detail-floor').innerText = item.floor_info || "無詳細位置";
+            document.getElementById('detail-finder').innerText = item.finder || "匿名";
+            document.getElementById('detail-desc').innerText = item.description || "無描述內容。";
+            const isFound = item.type === 'found';
+            const tag = document.getElementById('type-tag');
+            tag.innerText = isFound ? '拾獲物' : '協尋中';
+            tag.className = `absolute top-4 left-4 px-4 py-1 rounded-full text-[10px] font-black text-white z-10 shadow-lg ${isFound?'bg-indigo-600':'bg-red-500'}`;
+            const claimBtn = document.getElementById('btn-claim-now');
+            claimBtn.innerText = isFound ? '是我的！' : '找到了！';
+            const img = document.getElementById('detail-img'), ph = document.getElementById('no-img-placeholder');
+            if(item.imageUrl) { img.src = item.imageUrl; img.classList.remove('hidden'); ph.classList.add('hidden'); }
+            else { img.classList.add('hidden'); ph.classList.remove('hidden'); }
+            claimBtn.onclick = async () => {
+                if(confirm(isFound ? '確認要領回這件物品嗎？' : '您是否已經找回這件遺失物？')){
+                    if(isFound && item.finder) await updateDoc(doc(USER_COLL, item.finder), { merit: increment(20) }).catch(() => setDoc(doc(USER_COLL, item.finder), { merit: 20 }));
+                    await deleteDoc(doc(db, "all_reports_v3", id));
+                    closeDetail();
+                }
+            };
+            document.getElementById('detail-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('submit-btn').onclick = async () => {
+            const nick = document.getElementById('in-nick').value.trim(), item = document.getElementById('in-item').value.trim();
+            if(!nick || !item) return alert("請填寫暱稱與物品名稱！");
+            const btn = document.getElementById('submit-btn'); btn.disabled = true; btn.innerText = "資料傳輸中...";
+            try {
+                await setDoc(doc(LOST_COLL), {
+                    type: currentReportTab, name: item, finder: nick, campus: currentCampus,
+                    floor_info: document.getElementById('in-floor').value,
+                    description: document.getElementById('in-desc').value, location: document.getElementById('location-name').innerText.replace('📍 ',''),
+                    imageUrl: document.getElementById('img-preview').src.startsWith('data:image') ? document.getElementById('img-preview').src : "",
+                    x: clickPos.x, y: clickPos.y, time: Date.now()
+                });
+                if(currentReportTab === 'found') await updateDoc(doc(USER_COLL, nick), { merit: increment(50) }).catch(() => setDoc(doc(USER_COLL, nick), { merit: 50 }));
+                alert("發布成功！感謝熱心幫忙。"); closeModals();
+            } catch(e) { alert("發布失敗，請重試！"); } finally { btn.disabled = false; btn.innerText = currentReportTab === 'found' ? "確認標註 (+50 功德)" : "發布求助標記"; }
+        };
 
         window.previewImage = (input) => {
             const f = input.files[0]; if(!f) return;
-            const reader = new FileReader(); 
+            const reader = new FileReader();
             reader.onload = e => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width, height = img.height, max = 800;
-                    if (width > height) { if (width > max) { height *= max / width; width = max; } }
-                    else { if (height > max) { width *= max / height; height = max; } }
-                    canvas.width = width; canvas.height = height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    const canvas = document.getElementById('capture-canvas');
+                    let w = img.width, h = img.height; if(w > 800) { h *= 800/w; w = 800; }
+                    canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     document.getElementById('img-preview').src = canvas.toDataURL('image/jpeg', 0.6);
-                    document.getElementById('preview-container').classList.remove('hidden');
-                    document.getElementById('upload-placeholder').classList.add('hidden');
+                    document.getElementById('preview-container').classList.remove('hidden'); document.getElementById('upload-placeholder').classList.add('hidden');
                 };
                 img.src = e.target.result;
             };
@@ -498,22 +501,33 @@
         };
 
         window.closeModals = () => {
+            stopCamera();
             document.getElementById('report-modal').classList.add('hidden');
-            document.getElementById('nick-hint').innerText = "";
-            document.getElementById('in-item').value = "";
-            document.getElementById('in-floor').value = "";
-            document.getElementById('in-desc').value = "";
-            document.getElementById('in-file').value = "";
-            document.getElementById('img-preview').src = "";
-            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('in-nick').value = ''; document.getElementById('in-item').value = '';
+            document.getElementById('in-floor').value = ''; document.getElementById('in-desc').value = '';
+            document.getElementById('img-preview').src = ''; document.getElementById('preview-container').classList.add('hidden');
             document.getElementById('upload-placeholder').classList.remove('hidden');
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = false;
-            btn.innerText = currentTab === 'found' ? "確認標註 (+50 功德)" : "發布求助標記";
         };
         window.closeDetail = () => document.getElementById('detail-modal').classList.add('hidden');
 
+        // 啟動預設校區
         window.switchCampus('min-sheng');
+
+        // 暱稱識別與功德查詢
+        document.getElementById('in-nick').addEventListener('change', async (e) => {
+            const nick = e.target.value.trim();
+            const hint = document.getElementById('nick-hint');
+            if(!nick) { hint.innerText = ""; return; }
+            hint.innerText = "查詢中...";
+            try {
+                const userSnap = await getDoc(doc(USER_COLL, nick));
+                if(userSnap.exists()) {
+                    hint.innerHTML = `✅ 已識別，功德：<span class="text-indigo-600 font-black">${userSnap.data().merit || 0}</span>`;
+                } else {
+                    hint.innerHTML = `✨ <span class="text-emerald-500 font-black">歡迎加入拾物所。</span>`;
+                }
+            } catch(e) { hint.innerText = ""; }
+        });
     </script>
 </body>
 </html>
