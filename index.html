@@ -231,17 +231,29 @@
             if (timeInput) timeInput.value = now.toISOString().slice(0, 16);
         }
 
-        // ✅ 加入「年份」的時間格式化函式 (YYYY/MM/DD HH:mm)
-        function formatTime(timestampOrIso) {
-            if (!timestampOrIso) return "時間未知";
+        // ✅ 時間格式化函式 (傳回年月日與時間的物件，方便彈性排版)
+        function formatTimeParts(timestampOrIso) {
+            if (!timestampOrIso) return { dateStr: "未知日期", timeStr: "未知時間", full: "時間未知" };
             const date = new Date(timestampOrIso);
-            if (isNaN(date.getTime())) return "時間未知";
+            if (isNaN(date.getTime())) return { dateStr: "未知日期", timeStr: "未知時間", full: "時間未知" };
+            
             const year = date.getFullYear();
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const day = date.getDate().toString().padStart(2, '0');
             const hours = date.getHours().toString().padStart(2, '0');
             const mins = date.getMinutes().toString().padStart(2, '0');
-            return `${year}/${month}/${day} ${hours}:${mins}`;
+
+            const dateStr = `${year}/${month}/${day}`;
+            const timeStr = `${hours}:${mins}`;
+            return {
+                dateStr,
+                timeStr,
+                full: `${dateStr} ${timeStr}`
+            };
+        }
+
+        function formatTime(timestampOrIso) {
+            return formatTimeParts(timestampOrIso).full;
         }
 
         let offsetX = 0, offsetY = 0, scale = 1.0; 
@@ -438,23 +450,27 @@
             });
         }
 
+        // ✅ 最新動態列表：同樣顯示完整年份 (格式：YYYY/MM/DD HH:mm)
         function renderList() {
             const filtered = reports.filter(i => (i.campus || 'min-sheng') === currentCampus);
             document.getElementById('items-count').innerText = filtered.length;
             document.getElementById('items-list').innerHTML = filtered
                 .sort((a,b) => (b.time || 0) - (a.time || 0))
                 .map(i => {
-                    const timeStr = formatTime(i.eventTime || i.time);
-                    return `<div onclick="openDetail('${i.id}')" class="p-3 bg-white rounded-2xl border-l-4 ${i.type==='found'?'border-indigo-500':'border-red-500'} flex items-center gap-3 cursor-pointer shadow-sm hover:shadow-md transition-all">
-                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    const t = formatTimeParts(i.eventTime || i.time);
+                    return `<div onclick="openDetail('${i.id}')" class="p-3 bg-white rounded-2xl border-l-4 ${i.type==='found'?'border-indigo-500':'border-red-500'} flex items-start gap-3 cursor-pointer shadow-sm hover:shadow-md transition-all">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden mt-0.5">
                             ${i.imageUrl ? `<img src="${i.imageUrl}" class="w-full h-full object-cover">` : '<span class="text-lg">🎁</span>'}
                         </div>
-                        <div class="flex-1 truncate text-left font-bold text-sm text-slate-700">
-                            <div class="flex justify-between items-center">
-                                <span class="truncate">${i.name}</span>
-                                <span class="text-[10px] text-slate-400 font-normal ml-2">${timeStr}</span>
+                        <div class="flex-1 min-w-0 text-left font-bold text-sm text-slate-700">
+                            <div class="flex justify-between items-start gap-2">
+                                <span class="truncate text-slate-800">${i.name}</span>
+                                <div class="text-[10px] text-slate-400 font-normal text-right shrink-0 leading-tight">
+                                    <div>${t.dateStr}</div>
+                                    <div>${t.timeStr}</div>
+                                </div>
                             </div>
-                            <div class="text-[11px] text-slate-400 font-normal truncate">📍 ${i.location}</div>
+                            <div class="text-[11px] text-slate-400 font-normal truncate mt-0.5">📍 ${i.location}</div>
                         </div>
                     </div>`;
                 }).join('');
